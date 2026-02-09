@@ -1,10 +1,8 @@
 import type { MapRef } from '@/components/ui/map'
-import { Clock, ExternalLink, Navigation, Star } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Map, MapControls, MapMarker, MarkerContent, MarkerLabel, MarkerPopup } from '@/components/ui/map'
-import { places } from '@/data/places'
+import { Map, MapControls } from '@/components/ui/map'
 import { styles } from './components/map.styles'
+import { MarkersLayer } from './components/MapViewLayers'
 
 type StyleKey = keyof typeof styles
 
@@ -41,7 +39,7 @@ function App() {
           />
 
           {/* Render markers for each place in the data */ }
-          {places.map(place => (
+          {/* {places.map(place => (
             <MapMarker
               key={place.id}
               longitude={place.lng}
@@ -95,7 +93,9 @@ function App() {
                 </div>
               </MarkerPopup>
             </MapMarker>
-          ))}
+          ))} */}
+
+          <MarkersLayer />
         </Map>
         <div className="absolute top-2 right-2 z-10">
           <select

@@ -978,6 +978,8 @@ type MapPopupProps = {
   className?: string
   /** Show a close button in the popup (default: false) */
   closeButton?: boolean
+  /** Whether the popup should close when it loses focus (default: false) */
+  closeOnUnfocus?: boolean
 } & Omit<PopupOptions, 'className' | 'closeButton'>
 
 function MapPopup({
@@ -987,6 +989,7 @@ function MapPopup({
   children,
   className,
   closeButton = false,
+  closeOnUnfocus = false,
   ...popupOptions
 }: MapPopupProps) {
   const { map } = useMap()
@@ -1027,6 +1030,23 @@ function MapPopup({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map])
+
+  // Handle closeOnUnfocus
+  useEffect(() => {
+    if (!closeOnUnfocus || !map) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (container && !container.contains(event.target as Node) && popup.isOpen()) {
+        popup.remove()
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [closeOnUnfocus, map, container, popup])
 
   if (popup.isOpen()) {
     const prev = popupOptionsRef.current
