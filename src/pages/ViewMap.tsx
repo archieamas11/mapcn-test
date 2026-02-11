@@ -21,7 +21,7 @@ function App() {
         <Map
           ref={mapRef}
           center={center}
-          zoom={18}
+          zoom={19}
           styles={
             selectedStyle
               ? { light: selectedStyle, dark: selectedStyle }
@@ -36,65 +36,10 @@ function App() {
             showLocate
             showFullscreen
             resetViewport
+            use3D={true}
           />
 
           {/* Render markers for each place in the data */ }
-          {/* {places.map(place => (
-            <MapMarker
-              key={place.id}
-              longitude={place.lng}
-              latitude={place.lat}
-            >
-              <MarkerContent>
-                <div className="size-5 rounded-full bg-rose-500 border-2 border-white shadow-lg cursor-pointer hover:scale-110 transition-transform" />
-                <MarkerLabel position="bottom">{place.label}</MarkerLabel>
-              </MarkerContent>
-              <MarkerPopup className="p-0 w-62">
-                <div className="relative h-32 overflow-hidden rounded-t-md">
-                  <img
-                    src={place.image}
-                    alt={place.name}
-                    className="object-cover"
-                  />
-                </div>
-                <div className="space-y-2 p-3">
-                  <div>
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {place.category}
-                    </span>
-                    <h3 className="font-semibold text-foreground leading-tight">
-                      {place.name}
-                    </h3>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Star className="size-3.5 fill-amber-400 text-amber-400" />
-                      <span className="font-medium">{place.rating}</span>
-                      <span className="text-muted-foreground">
-                        (
-                        {place.reviews.toLocaleString()}
-                        )
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Clock className="size-3.5" />
-                    <span>{place.hours}</span>
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" className="flex-1 h-8">
-                      <Navigation className="size-3.5 mr-1.5" />
-                      Directions
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-8">
-                      <ExternalLink className="size-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </MarkerPopup>
-            </MapMarker>
-          ))} */}
-
           <MarkersLayer />
         </Map>
         <div className="absolute top-2 right-2 z-10">

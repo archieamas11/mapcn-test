@@ -1,6 +1,6 @@
 import type { MarkerOptions, PopupOptions } from 'maplibre-gl'
 import type { ReactNode } from 'react'
-import { Loader2, Locate, Maximize, Minus, Plus, RefreshCcw, X } from 'lucide-react'
+import { Loader2, Locate, Maximize, Minus, Plus, RefreshCcw, User, X } from 'lucide-react'
 import MapLibreGL from 'maplibre-gl'
 import {
   createContext,
@@ -19,6 +19,7 @@ import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { Toggle } from './toggle'
 
 // Check document class for theme (works with next-themes, etc.)
 function getDocumentTheme(): Theme | null {
@@ -87,6 +88,8 @@ interface MapContextValue {
   initialViewport?: MapViewport
   /** Function to reset the map back to the initial viewport */
   resetToInitial?: () => void
+  /** Function to set the user's current location marker */
+  setUserLocation: (coords: { longitude: number; latitude: number }) => void
 }
 
 const MapContext = createContext<MapContextValue | null>(null)
@@ -194,6 +197,7 @@ const Map = forwardRef<MapRef, MapProps>((
   const styleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const internalUpdateRef = useRef(false)
   const initialViewportRef = useRef<MapViewport | null>(null)
+  const [userLocation, setUserLocation] = useState<{ longitude: number; latitude: number } | null>(null)
   const resolvedTheme = useResolvedTheme(themeProp)
 
   const isControlled = viewport !== undefined && onViewportChange !== undefined
@@ -333,7 +337,7 @@ const Map = forwardRef<MapRef, MapProps>((
     if (!mapInstance || !initialViewportRef.current)
       return
     const v = initialViewportRef.current
-    mapInstance.easeTo({ center: v.center, zoom: v.zoom, bearing: v.bearing, pitch: v.pitch, duration: 500 })
+    mapInstance.easeTo({ center: v.center, zoom: v.zoom, bearing: v.bearing, duration: 500 })
   }, [mapInstance])
 
   const contextValue = useMemo(
@@ -342,8 +346,9 @@ const Map = forwardRef<MapRef, MapProps>((
       isLoaded: isLoaded && isStyleLoaded,
       initialViewport: initialViewportRef.current ?? undefined,
       resetToInitial,
+      setUserLocation,
     }),
-    [mapInstance, isLoaded, isStyleLoaded, resetToInitial],
+    [mapInstance, isLoaded, isStyleLoaded, resetToInitial, setUserLocation],
   )
 
   return (
@@ -355,6 +360,27 @@ const Map = forwardRef<MapRef, MapProps>((
         {!isLoaded && <DefaultLoader />}
         {/* SSR-safe: children render only when map is loaded on client */}
         {mapInstance && children}
+        {mapInstance && userLocation && (
+
+        <MapMarker
+          longitude={userLocation.longitude}
+          latitude={userLocation.latitude}
+        >
+          <MarkerContent>
+            <div className="relative flex items-center justify-center">
+              {/* Accuracy circle */}
+              <div className="absolute w-16 h-16 rounded-full bg-blue-500/20 animate-pulse" />
+
+              {/* White outer ring */}
+              <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-md">
+                
+                {/* Blue center dot */}
+                <div className="w-3 h-3 rounded-full bg-blue-600" />
+              </div>
+            </div>
+          </MarkerContent>
+        </MapMarker>
+        )}
       </div>
     </MapContext.Provider>
   )
@@ -750,6 +776,8 @@ interface MapControlsProps {
   showFullscreen?: boolean
   /** Show reset viewport button to restore initial viewport (default: false) */
   resetViewport?: boolean
+    /** Show 3D view button to toggle 3D mode (default: false) */
+  use3D?: boolean
   /** Additional CSS classes for the controls container */
   className?: string
   /** Callback with user coordinates when located */
@@ -805,10 +833,11 @@ function MapControls({
   showLocate = false,
   showFullscreen = false,
   resetViewport = false,
+  use3D = false,
   className,
   onLocate,
 }: MapControlsProps) {
-  const { map, resetToInitial } = useMap()
+  const { map, resetToInitial, setUserLocation } = useMap()
   const [waitingForLocation, setWaitingForLocation] = useState(false)
 
   const handleZoomIn = useCallback(() => {
@@ -826,6 +855,12 @@ function MapControls({
   const handleResetBearing = useCallback(() => {
     map?.resetNorthPitch({ duration: 300 })
   }, [map])
+  
+  const handleToggle3D = useCallback(() => {
+    if (!map) return
+    const currentPitch = map.getPitch()
+    map.easeTo({ pitch: currentPitch === 0 ? 60 : 0, duration: 300 })
+  }, [map])
 
   const handleLocate = useCallback(() => {
     setWaitingForLocation(true)
@@ -838,10 +873,11 @@ function MapControls({
           }
           map?.flyTo({
             center: [coords.longitude, coords.latitude],
-            zoom: 14,
+            zoom: 18,
             duration: 1500,
           })
           onLocate?.(coords)
+          setUserLocation(coords)
           setWaitingForLocation(false)
         },
         (error) => {
@@ -911,12 +947,21 @@ function MapControls({
           </ControlButton>
         </ControlGroup>
       )}
-        {resetViewport && (
+      {resetViewport && (
         <ControlGroup>
           <ControlButton onClick={handleResetViewport} label="Reset viewport">
             <RefreshCcw className="size-4" />
           </ControlButton>
         </ControlGroup>
+      )}
+      {use3D && (
+        <ControlGroup>
+          <ControlButton onClick={handleToggle3D} label="Toggle 3D view">
+            <Toggle aria-label="Toggle 3D view">
+              3D    
+            </Toggle>
+          </ControlButton>
+        </ControlGroup> 
       )}
     </div>
   )
@@ -989,7 +1034,6 @@ function MapPopup({
   children,
   className,
   closeButton = false,
-  closeOnUnfocus = false,
   ...popupOptions
 }: MapPopupProps) {
   const { map } = useMap()
@@ -1031,23 +1075,6 @@ function MapPopup({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map])
 
-  // Handle closeOnUnfocus
-  useEffect(() => {
-    if (!closeOnUnfocus || !map) return
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (container && !container.contains(event.target as Node) && popup.isOpen()) {
-        popup.remove()
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [closeOnUnfocus, map, container, popup])
-
   if (popup.isOpen()) {
     const prev = popupOptionsRef.current
 
@@ -1074,7 +1101,7 @@ function MapPopup({
   return createPortal(
     <div
       className={cn(
-        'relative rounded-md border bg-popover p-3 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95',
+        'relative animate-in fade-in-0 zoom-in-95',
         className,
       )}
     >

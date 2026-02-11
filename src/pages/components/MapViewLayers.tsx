@@ -1,5 +1,17 @@
-import { useEffect, useId, useState } from 'react'
+import { ExternalLink, MapPin, Navigation, PrinterIcon } from 'lucide-react'
+import maplibregl from 'maplibre-gl'
+import { useEffect, useId, useRef, useState } from 'react'
+import { renderToString } from 'react-dom/server'
+import { Button } from '@/components/ui/button'
 import { MapPopup, useMap } from '@/components/ui/map'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar'
+import { Skeleton } from '@/components/ui/skeleton'
 import { NicheGridDisplay } from './NicheDisplay'
 
 // Generate random points around Finisterre Gardenz
@@ -20,6 +32,16 @@ function generateRandomPoints(count: number) {
       name: `Location ${i + 1}`,
       category,
     }
+
+    const status = ['available', 'sold', 'reserved', 'hold', 'not_available'][
+      Math.floor(Math.random() * 5)
+    ]
+    properties.status = status
+
+    const law_type = ['bronze', 'diamond', 'platinum', 'silver'][
+      Math.floor(Math.random() * 4)
+    ]
+    properties.law_type = law_type
 
     if (category === 'lawn_lot') {
       properties.width = Math.floor(Math.random() * 100) + 10
@@ -56,6 +78,9 @@ interface SelectedPoint {
   name: string
   category: string
   coordinates: [number, number]
+  lawn_type?: string
+  image: string
+  status?: string
   width?: number
   length?: number
   area?: number
@@ -64,172 +89,401 @@ interface SelectedPoint {
 }
 
 export function MarkersLayer() {
-  const { map, isLoaded } = useMap()
-  const id = useId()
-  const sourceId = `markers-source-${id}`
-  const layerId = `markers-layer-${id}`
-  const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(
-    null,
-  )
+  // Move the map/marker logic into a child component so it can use `useSidebar()`
+  // (which requires being within `SidebarProvider`).
+  function MarkersLayerContent() {
+    const { map, isLoaded } = useMap()
+    const id = useId()
+    const sourceId = `markers-source-${id}`
+    const layerId = `markers-layer-${id}`
+    const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(
+      null,
+    )
+    const [imageLoaded, setImageLoaded] = useState(false)
+    const mapPinMarkerRef = useRef<maplibregl.Marker | null>(null)
 
-  useEffect(() => {
-    if (!map || !isLoaded)
-      return
+    const { setOpen, setOpenMobile, isMobile } = useSidebar()
 
-    map.addSource(sourceId, {
-      type: 'geojson',
-      data: pointsData,
-    })
+    useEffect(() => {
+      setImageLoaded(false)
+    }, [selectedPoint])
 
-    map.addLayer({
-      id: layerId,
-      type: 'circle',
-      source: sourceId,
-      paint: {
-        'circle-radius': 6,
-        'circle-color': '#3b82f6',
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff',
-        // add more paint properties here to customize the appearance of the markers
-      },
-    })
-
-    const handleClick = (
-      e: maplibregl.MapMouseEvent & {
-        features?: maplibregl.MapGeoJSONFeature[]
-      },
-    ) => {
-      if (!e.features?.length)
+    useEffect(() => {
+      if (!map || !isLoaded)
         return
 
-      const feature = e.features[0]
-      const coords = (feature.geometry as GeoJSON.Point).coordinates as [
-        number,
-        number,
-      ]
-
-      setSelectedPoint({
-        id: feature.properties?.id,
-        name: feature.properties?.name,
-        category: feature.properties?.category,
-        coordinates: coords,
-        width: feature.properties?.width,
-        length: feature.properties?.length,
-        area: feature.properties?.area,
-        rows: feature.properties?.rows,
-        columns: feature.properties?.columns,
+      map.addSource(sourceId, {
+        type: 'geojson',
+        data: pointsData,
       })
-    }
 
-    const handleMouseEnter = () => {
-      map.getCanvas().style.cursor = 'pointer'
-    }
+      map.addLayer({
+        id: layerId,
+        type: 'circle',
+        source: sourceId,
+        paint: {
+          'circle-radius': 6,
+          'circle-color': [
+            'case',
+            ['in', ['get', 'category'], ['literal', ['chambers', 'columbarium']]],
+            '#9ca3af',
+            [
+              'match',
+              ['get', 'status'],
+              'available',
+              '#10b981',
+              'sold',
+              '#ef4444',
+              'reserved',
+              '#f59e0b',
+              'hold',
+              '#8b5cf6',
+              'not_available',
+              '#6b7280',
+              '#3b82f6',
+            ],
+          ],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+        },
+      })
 
-    const handleMouseLeave = () => {
-      map.getCanvas().style.cursor = ''
-    }
+      const handleClick = (
+        e: maplibregl.MapMouseEvent & {
+          features?: maplibregl.MapGeoJSONFeature[]
+        },
+      ) => {
+        if (!e.features?.length)
+          return
 
-    map.on('click', layerId, handleClick)
-    map.on('mouseenter', layerId, handleMouseEnter)
-    map.on('mouseleave', layerId, handleMouseLeave)
+        const feature = e.features[0]
+        const coords = (feature.geometry as GeoJSON.Point).coordinates as [
+          number,
+          number,
+        ]
 
-    return () => {
-      map.off('click', layerId, handleClick)
-      map.off('mouseenter', layerId, handleMouseEnter)
-      map.off('mouseleave', layerId, handleMouseLeave)
+        const images = [
+          'https://images.unsplash.com/photo-1575223970966-76ae61ee7838?w=300&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1496588152823-86ff7695e68f?w=300&h=200&fit=crop',
+          'https://images.unsplash.com/photo-1534430480872-3498386e7856?w=300&h=200&fit=crop',
+        ]
+        const randomImage = images[Math.floor(Math.random() * images.length)]
 
-      try {
-        if (map.getLayer(layerId))
-          map.removeLayer(layerId)
-        if (map.getSource(sourceId))
-          map.removeSource(sourceId)
+        // Update selected point
+        setSelectedPoint({
+          id: feature.properties?.id,
+          name: feature.properties?.name,
+          category: feature.properties?.category,
+          image: randomImage,
+          coordinates: coords,
+          lawn_type: feature.properties?.law_type,
+          status: feature.properties?.status,
+          width: feature.properties?.width,
+          length: feature.properties?.length,
+          area: feature.properties?.area,
+          rows: feature.properties?.rows,
+          columns: feature.properties?.columns,
+        })
+
+        // Ensure sidebar is open when a marker is clicked
+        if (isMobile) {
+          setOpenMobile(true)
+        }
+        else {
+          setOpen(true)
+        }
       }
-      catch {
-        // ignore cleanup errors
+
+      const handleMouseEnter = () => {
+        map.getCanvas().style.cursor = 'pointer'
       }
-    }
-  }, [map, isLoaded, sourceId, layerId])
 
-  return (
-    <>
-      {selectedPoint && (
-        <MapPopup
-          longitude={selectedPoint.coordinates[0]}
-          latitude={selectedPoint.coordinates[1]}
-          onClose={() => setSelectedPoint(null)}
-          closeOnClick={false}
-          focusAfterOpen={false}
-          offset={10}
-        >
-          <div className="min-w-[200px] max-w-[400px] bg-white border border-gray-200 rounded-lg p-4 shadow-xl">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-lg text-gray-900">
-                {selectedPoint.name}
-              </h3>
-              <span className="text-xs text-gray-500 uppercase tracking-wide">
-                {selectedPoint.category.replace('_', ' ')}
-              </span>
-            </div>
+      const handleMouseLeave = () => {
+        map.getCanvas().style.cursor = ''
+      }
 
-            {selectedPoint.category === 'lawn_lot' && (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-700">
-                  This is a public lawn lot — good for events and gatherings.
-                </p>
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div>
-                    <strong>Width:</strong>
-                    {selectedPoint.width}
-                    m
-                  </div>
-                  <div>
-                    <strong>Length:</strong>
-                    {selectedPoint.length}
-                    m
-                  </div>
-                  <div>
-                    <strong>Area:</strong>
-                    {selectedPoint.area}
-                    m²
-                  </div>
+      map.on('click', layerId, handleClick)
+      map.on('mouseenter', layerId, handleMouseEnter)
+      map.on('mouseleave', layerId, handleMouseLeave)
+
+      return () => {
+        map.off('click', layerId, handleClick)
+        map.off('mouseenter', layerId, handleMouseEnter)
+        map.off('mouseleave', layerId, handleMouseLeave)
+
+        try {
+          if (map.getLayer(layerId))
+            map.removeLayer(layerId)
+          if (map.getSource(sourceId))
+            map.removeSource(sourceId)
+        }
+        catch {
+          // ignore cleanup errors
+        }
+      }
+    }, [map, isLoaded, sourceId, layerId, isMobile, setOpen, setOpenMobile])
+
+    // Handle MapPin marker for selected point
+    useEffect(() => {
+      if (!map || !isLoaded)
+        return
+
+      // Remove existing MapPin marker
+      if (mapPinMarkerRef.current) {
+        mapPinMarkerRef.current.remove()
+        mapPinMarkerRef.current = null
+      }
+
+      if (selectedPoint) {
+        // Filter out the selected marker from the circle layer
+        map.setFilter(layerId, ['!=', ['get', 'id'], selectedPoint.id])
+
+        // Create MapPin element
+        const el = document.createElement('div')
+        el.className = 'map-pin-bounce'
+        el.innerHTML = renderToString(
+          <MapPin
+            className="w-8 h-8 text-red-500 drop-shadow-lg"
+            fill="currentColor"
+          />,
+        )
+        el.style.cursor = 'pointer'
+
+        // Create and add the MapPin marker
+        const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat(selectedPoint.coordinates)
+          .addTo(map)
+
+        mapPinMarkerRef.current = marker
+      }
+      else {
+        // Reset filter to show all circle markers
+        map.setFilter(layerId, null)
+      }
+
+      return () => {
+        if (mapPinMarkerRef.current) {
+          mapPinMarkerRef.current.remove()
+          mapPinMarkerRef.current = null
+        }
+      }
+    }, [map, isLoaded, selectedPoint, layerId])
+
+    return (
+      <>
+        {selectedPoint && (
+          <MapPopup
+            longitude={selectedPoint.coordinates[0]}
+            latitude={selectedPoint.coordinates[1]}
+            onClose={() => setSelectedPoint(null)}
+            closeOnClick={true}
+            focusAfterOpen={false}
+            className="flex gap-2"
+          >
+
+            <div className="min-w-[300px] max-w-[400px] h-full bg-popover/50 border rounded-md shadow-md p-2 space-y-2">
+              <div className="bg-secondary rounded-md shadow-sm p-5 w-full max-w-md relative">
+                <div className="absolute top-2 right-2">
+                  {/* eslint-disable-next-line no-alert */}
+                  <Button size="icon" variant="outline" className="rounded-full" title="Print Niche" onClick={() => alert('Print Niche clicked')}>
+                    <PrinterIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* Header */}
+                <div className="text-center">
+                  <p className="text-xs tracking-wide uppercase text-muted-foreground">
+                    Finisterre Gardenz
+                  </p>
+                  <h2 className="text-xl font-semibold text-foreground">
+                    Plot Information
+                  </h2>
                 </div>
               </div>
-            )}
 
-            {(selectedPoint.category === 'columbarium'
-              || selectedPoint.category === 'chambers') && (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-700">
-                  {selectedPoint.category === 'columbarium'
-                    ? 'Columbarium — quiet memorial area.'
-                    : 'Chambers — indoor facilities.'}
+              {(selectedPoint.category === 'lawn_lot') && (
+                <div className="bg-secondary rounded-md shadow-sm p-5 w-full max-w-md ">
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Plot Status */}
+                    <div className="text-center space-y-2">
+                      <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Status</div>
+                      <div className="flex justify-center">
+                        <div
+                          className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center"
+                          aria-label="Plot Status"
+                          title="Plot Status"
+                        >
+                          <span className="text-xs capitalize leading-none">{selectedPoint.status}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-center space-y-2 border-l border-border">
+                      {/* Plot category */}
+                      <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Category</div>
+                      <div className="flex justify-center">
+                        <span
+                          className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center"
+                        >
+                          <span className="text-xs capitalize font-bold">{selectedPoint.lawn_type}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* popup for columbarium or chambers with niche grid display */}
+              {(selectedPoint.category === 'columbarium'
+                || selectedPoint.category === 'chambers') && (
+                <div className="space-y-2">
+                  {/* {Niche grids are common in columbariums and chambers, showing available niches.} */}
+                  {selectedPoint.rows && selectedPoint.columns && (
+                    <NicheGridDisplay
+                      rows={selectedPoint.rows}
+                      cols={selectedPoint.columns}
+                    />
+                  )}
+
+                  <div className="grid grid-cols-4 gap-2 text-xs bg-secondary p-2 rounded-md">
+                    <div className="rounded-lg bg-green-50 p-2 text-center dark:bg-green-200 border">
+                      <div className="font-semibold text-green-700">{pointsData.features.filter(f => f.properties.status === 'available').length}</div>
+                      <div className="text-green-600">Available</div>
+                    </div>
+                    <div className="rounded bg-yellow-50 p-2 text-center dark:bg-yellow-200 border">
+                      <div className="font-semibold text-yellow-700">{pointsData.features.filter(f => f.properties.status === 'reserved').length}</div>
+                      <div className="text-yellow-600">Reserved</div>
+                    </div>
+                    <div className="rounded bg-red-50 p-2 text-center dark:bg-red-200 border">
+                      <div className="font-semibold text-red-700">{pointsData.features.filter(f => f.properties.status === 'sold').length}</div>
+                      <div className="text-red-600">Sold</div>
+                    </div>
+                    <div className="rounded bg-cyan-200 p-2 text-center dark:bg-cyan-400 border">
+                      <div className="font-semibold text-cyan-700">{pointsData.features.filter(f => f.properties.status === 'hold').length}</div>
+                      <div className="text-cyan-600">Hold</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* else */}
+              {!['lawn_lot', 'columbarium', 'chambers'].includes(
+                selectedPoint.category,
+              ) && (
+                <p className="text-sm text-gray-500 italic">
+                  No additional info available.
                 </p>
-                <p className="text-sm text-gray-700">
-                  <strong>Grid Layout:</strong>
-                  {selectedPoint.rows}
-                  rows ×
-                  {selectedPoint.columns}
-                  columns
-                </p>
-                {selectedPoint.rows && selectedPoint.columns && (
-                  <NicheGridDisplay
-                    rows={selectedPoint.rows}
-                    cols={selectedPoint.columns}
-                  />
-                )}
+              )}
+            </div>
+
+            {/* display images and plot information */}
+            <div className="min-w-[200px] max-w-[300px] h-full bg-secondary/80 border rounded-md shadow-md space-y-3">
+              <div className="h-50 relative overflow-hidden rounded-t-md">
+                {!imageLoaded && <Skeleton className="w-full h-full absolute inset-0" />}
+                <img
+                  src={selectedPoint.image}
+                  alt={selectedPoint.name}
+                  className="object-cover w-full h-full"
+                  onLoad={() => setImageLoaded(true)}
+                />
               </div>
-            )}
 
-            {!['lawn_lot', 'columbarium', 'chambers'].includes(
-              selectedPoint.category,
-            ) && (
-              <p className="text-sm text-gray-500 italic">
-                No additional info available.
-              </p>
-            )}
-          </div>
-        </MapPopup>
-      )}
-    </>
+              <div className="space-y-2 px-4 pb-3">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {selectedPoint.category === 'chambers' ? 'Memorial Chambers' : selectedPoint.category === 'columbarium' ? 'Columbarium' : selectedPoint.category === 'lawn_lot' ? 'Lawn Lot' : ''}
+                </span>
+                <p className="font-semibold text-foreground leading-tight">
+                  {selectedPoint.category === 'chambers' && 'A dignified memorial chamber with individual niches for placement and remembrance.'}
+                  {selectedPoint.category === 'columbarium' && 'A peaceful columbarium with organized niches for eternal rest and peaceful remembrance.'}
+                  {selectedPoint.category === 'lawn_lot' && 'A serene lawn lot perfect for gatherings, ceremonies, and peaceful moments of reflection.'}
+                </p>
+
+                {/* Divider */}
+                <div className="h-px bg-border" />
+
+                {/* Stats Grid */}
+                {selectedPoint.category === 'chambers' || selectedPoint.category === 'columbarium'
+                  ? (
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div className="space-y-0">
+                          <p className="text-xs text-muted-foreground">Rows</p>
+                          <p className="text-lg font-semibold">{selectedPoint.rows ?? '—'}</p>
+                        </div>
+                        <div className="space-y-0">
+                          <p className="text-xs text-muted-foreground">Columns</p>
+                          <p className="text-lg font-semibold">{selectedPoint.columns ?? '—'}</p>
+                        </div>
+                        <div className="space-y-0">
+                          <p className="text-xs text-muted-foreground">Total</p>
+                          <p className="text-lg font-semibold">
+                            {selectedPoint.rows && selectedPoint.columns
+                              ? selectedPoint.rows * selectedPoint.columns
+                              : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  : selectedPoint.category === 'lawn_lot'
+                    ? (
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                          <div className="space-y-0">
+                            <p className="text-xs text-muted-foreground">Width</p>
+                            <p className="text-lg font-semibold">
+                              {selectedPoint.width}
+                            </p>
+                          </div>
+                          <div className="space-y-0">
+                            <p className="text-xs text-muted-foreground">Length</p>
+                            <p className="text-lg font-semibold">
+                              {selectedPoint.length}
+                              m
+                            </p>
+                          </div>
+                          <div className="space-y-0">
+                            <p className="text-xs text-muted-foreground">Area</p>
+                            <p className="text-lg font-semibold">
+                              {selectedPoint.area}
+                              m²
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    : null}
+
+                <div className="flex gap-2 pt-1">
+                  {/* Get direction button for activating navigation to the plot, and share button for sharing the plot details. These buttons are placeholders and can be implemented with actual functionality as needed. */}
+                  {/* eslint-disable-next-line no-alert */}
+                  <Button size="sm" className="h-8 flex-1 rounded-full" title="Get Direction" onClick={() => alert('Get Direction clicked')}>
+                    <Navigation className="size-3.5" />
+                    Direction
+                  </Button>
+                  {/* this button will share the plot via coppy link or via qr code and if the user scan it or paste the link it will auto popup specific plot */}
+                  {/* eslint-disable-next-line no-alert */}
+                  <Button size="sm" variant="ghost" className="h-8" title="Share Plot" onClick={() => alert('Share Plot clicked')}>
+                    <ExternalLink className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </MapPopup>
+        )}
+      </>
+    )
+  }
+
+  return (
+    <SidebarProvider>
+      <MarkersLayerContent />
+      <Sidebar>
+        <SidebarContent>
+          <span>oten</span>
+        </SidebarContent>
+      </Sidebar>
+
+      <main className="z-50 mr-10">
+        <SidebarTrigger />
+        {/* Main content going here */}
+        <p>oten</p>
+      </main>
+    </SidebarProvider>
   )
 }
