@@ -1,6 +1,6 @@
 import type { MarkerOptions, PopupOptions } from 'maplibre-gl'
 import type { ReactNode } from 'react'
-import { Loader2, Locate, Maximize, Minus, Plus, RefreshCcw, User, X } from 'lucide-react'
+import { Loader2, Locate, Maximize, Minus, Plus, RefreshCcw, X } from 'lucide-react'
 import MapLibreGL from 'maplibre-gl'
 import {
   createContext,

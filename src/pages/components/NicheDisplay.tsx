@@ -77,7 +77,7 @@ export function NicheGridDisplay({
 
   return (
     <>
-      <div className="overflow-auto rounded-lg p-2 w-full h-full bg-secondary">
+      <div className="overflow-auto rounded-lg p-2 w-full h-full bg-secondary scrollbar-thin">
         <div
           className="grid gap-1"
           style={{
