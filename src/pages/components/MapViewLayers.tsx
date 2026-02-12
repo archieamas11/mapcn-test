@@ -288,7 +288,7 @@ export function MarkersLayer() {
         {!isOpen && (
           <motion.form
             layoutId="search-bar"
-            className="flex w-full gap-1 max-w-md absolute top-2 right-1/2 transform translate-x-1/2 z-20"
+            className="flex w-full gap-1 absolute top-2 right-1/2 transform translate-x-1/2 z-20 max-w-xs sm:max-w-lg"
             role="search"
             aria-label="Admin lot search"
             initial={{ opacity: 0 }}
@@ -298,7 +298,7 @@ export function MarkersLayer() {
           >
             <div className="relative flex-1">
               <Input
-                className="peer dark:bg-background h-9 w-full rounded-full bg-white ps-12 pe-10 text-xs md:h-14 md:text-sm"
+                className="peer dark:bg-background h-12 w-full rounded-full bg-white ps-12 pe-10 text-xs md:h-14 md:text-sm"
                 placeholder="Search..."
                 aria-label="Search lot"
                 autoComplete="off"
