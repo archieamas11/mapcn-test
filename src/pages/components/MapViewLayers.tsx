@@ -1,5 +1,5 @@
 /* eslint-disable no-alert */
-import { ExternalLink, MapPin, Navigation, Pencil, PrinterIcon, SearchIcon } from 'lucide-react'
+import { ExternalLink, MapPin, Navigation, Pencil, PrinterIcon, SearchIcon, X } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import { useEffect, useId, useRef, useState } from 'react'
 import { renderToString } from 'react-dom/server'
@@ -14,7 +14,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
-import { NicheGridDisplay } from './NicheDisplay'
+import { NicheGrids } from './NicheGrids'
 
 // Generate random points around Finisterre Gardenz
 function generateRandomPoints(count: number) {
@@ -185,7 +185,7 @@ export function MarkersLayer() {
 
         // Center camera on the clicked marker
         map.flyTo({
-          center: [coords[0] - 0.0001, coords[1]], // slight left offset
+          center: coords,
           zoom: Math.max(map.getZoom(), 18),
           duration: 1000,
           essential: true,
@@ -246,10 +246,9 @@ export function MarkersLayer() {
 
         // Create MapPin element
         const el = document.createElement('div')
-        el.className = 'map-pin-bounce'
         el.innerHTML = renderToString(
           <MapPin
-            className="w-8 h-8 text-red-500 drop-shadow-lg"
+            className="w-5 h-5 text-red-500 drop-shadow-lg"
             fill="currentColor"
           />,
         )
@@ -285,6 +284,20 @@ export function MarkersLayer() {
       setImageLoaded(false)
     }, [selectedPoint])
 
+    // Clear search handler (placeholder)
+    const { setOpen, setOpenMobile, isMobile } = useSidebar()
+    const handleClear = () => {
+      // Close sidebar
+      if (isMobile) {
+        setOpenMobile(false)
+      }
+      else {
+        setOpen(false)
+      }
+      // Hide sidebar trigger by clearing selectedPoint
+      setSelectedPoint(null)
+    }
+
     if (!selectedPoint) {
       return (
         <div className="p-4 text-center text-muted-foreground">
@@ -298,15 +311,25 @@ export function MarkersLayer() {
         <form className="flex w-full gap-1" role="search" aria-label="Admin lot search">
           <div className="relative flex-1">
             <Input
-              className="peer dark:bg-background h-9 w-full rounded-full bg-white ps-9 pe-10 text-xs md:h-10 md:text-sm"
+              className="peer dark:bg-background h-9 w-full rounded-full bg-white ps-12 pe-10 text-xs md:h-14 md:text-sm"
               placeholder="Search..."
               aria-label="Search lot"
               autoComplete="off"
               name="search"
             />
-            <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3">
-              <SearchIcon size={16} />
+            <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5">
+              <SearchIcon size={20} />
             </div>
+            {selectedPoint && (
+              <button
+                className="text-muted-foreground/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 absolute inset-y-0 end-0 flex h-full w-10 items-center justify-center rounded-e-full transition-[color,box-shadow] outline-none focus:z-10 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer pr-5"
+                aria-label="Clear search"
+                type="button"
+                onClick={handleClear}
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+            )}
           </div>
         </form>
         {/* Plot Information Header */}
@@ -484,7 +507,7 @@ export function MarkersLayer() {
           <div className="space-y-2">
             {/* {Niche grids are common in columbariums and chambers, showing available niches.} */}
             {selectedPoint.rows && selectedPoint.columns && (
-              <NicheGridDisplay
+              <NicheGrids
                 rows={selectedPoint.rows}
                 cols={selectedPoint.columns}
               />

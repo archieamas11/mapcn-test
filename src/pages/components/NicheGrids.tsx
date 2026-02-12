@@ -18,7 +18,7 @@ interface Cell {
   number: number
 }
 
-export function NicheGridDisplay({
+export function NicheGrids({
   rows,
   cols,
 }: {
