@@ -4,6 +4,7 @@ import { ExternalLink, MapPin, Navigation, Pencil, PrinterIcon, SearchIcon, X } 
 import maplibregl from 'maplibre-gl'
 import { useEffect, useId, useRef, useState } from 'react'
 import { renderToString } from 'react-dom/server'
+import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { MapControls, useMap } from '@/components/ui/map'
@@ -12,9 +13,9 @@ import {
   SidebarContent,
   SidebarProvider,
   SidebarTrigger,
-  useSidebar,
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useSidebarStore } from '@/stores/sidebar-store'
 import { NicheGrids } from './NicheGrids'
 
 // Generate random points around Finisterre Gardenz
@@ -96,8 +97,6 @@ export function MarkersLayer() {
     null,
   )
 
-  // Move the map/marker logic into a child component so it can use `useSidebar()`
-  // (which requires being within `SidebarProvider`).
   function MarkersLayerContent() {
     const { map, isLoaded } = useMap()
     const id = useId()
@@ -105,7 +104,13 @@ export function MarkersLayer() {
     const layerId = `markers-layer-${id}`
     const mapPinMarkerRef = useRef<maplibregl.Marker | null>(null)
 
-    const { setOpen, setOpenMobile, isMobile } = useSidebar()
+    const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
+      useShallow(s => ({
+        setOpen: s.setOpen,
+        setOpenMobile: s.setOpenMobile,
+        isMobile: s.isMobile,
+      })),
+    )
 
     useEffect(() => {
       if (!map || !isLoaded)
@@ -280,7 +285,13 @@ export function MarkersLayer() {
 
   // Floating search bar on the map when sidebar is closed
   function FloatingSearchBar() {
-    const { open, openMobile, isMobile } = useSidebar()
+    const { open, openMobile, isMobile } = useSidebarStore(
+      useShallow(s => ({
+        open: s.open,
+        openMobile: s.openMobile,
+        isMobile: s.isMobile,
+      })),
+    )
     const isOpen = isMobile ? openMobile : open
 
     return (
@@ -322,7 +333,13 @@ export function MarkersLayer() {
     }, [selectedPoint])
 
     // Clear search handler (placeholder)
-    const { setOpen, setOpenMobile, isMobile } = useSidebar()
+    const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
+      useShallow(s => ({
+        setOpen: s.setOpen,
+        setOpenMobile: s.setOpenMobile,
+        isMobile: s.isMobile,
+      })),
+    )
     const handleClear = () => {
       // Close sidebar
       if (isMobile) {
