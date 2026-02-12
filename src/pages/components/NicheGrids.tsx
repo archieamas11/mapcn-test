@@ -1,18 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { getStatusStyle } from '@/utils/status-style'
 import GridDialog from './dialogs/GridDialog'
 
 const MAX_COLS_PER_PAGE = 10
-
-function getCellSize(cols: number) {
-  if (cols <= 10)
-    return 'min-h-8 text-lg'
-  if (cols <= 20)
-    return 'min-h-6 text-lg'
-  if (cols <= 30)
-    return 'min-h-5 text-lg'
-  return 'min-h-4 text-lg'
-}
 
 interface Cell {
   row: number
@@ -76,8 +67,6 @@ export function NicheGrids({
     ? cells.filter(cell => cell.col >= startCol && cell.col < endColExclusive)
     : cells
 
-  const cellSize = getCellSize(visibleCols)
-
   const openGridDialog = (cell: Cell) => {
     setSelectedCell(cell)
     setIsOpen(true)
@@ -85,21 +74,6 @@ export function NicheGrids({
   const closeGridDialog = () => {
     setIsOpen(false)
     setSelectedCell(null)
-  }
-
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'available':
-        return 'bg-green-400 border-green-600 text-green-900 hover:bg-green-500'
-      case 'sold':
-        return 'bg-red-400 border-red-600 text-red-900 hover:bg-red-500'
-      case 'reserved':
-        return 'bg-yellow-400 border-yellow-600 text-yellow-900 hover:bg-yellow-500'
-      case 'hold':
-        return 'bg-cyan-400 border-cyan-600 text-cyan-900 hover:bg-cyan-500'
-      default:
-        return 'bg-gray-300 border-gray-500'
-    }
   }
 
   return (
@@ -136,21 +110,21 @@ export function NicheGrids({
         </div>
       )}
 
-      <div className="overflow-y-auto overflow-x-hidden rounded-lg bg-secondary p-2 w-full">
+      <div className="rounded-lg bg-secondary p-2 overflow-hidden">
         <div
           className="grid gap-1"
           style={{
-            gridTemplateColumns: `repeat(${visibleCols}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${visibleCols}, 32px)`,
           }}
         >
           {visibleCells.map(cell => (
             <button
               key={`${cell.row}-${cell.col}`}
-              className={`relative flex aspect-square cursor-pointer items-center justify-center rounded-sm border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none ${cellSize} ${getStatusStyle(cell.status)}`}
+              className={`flex cursor-pointer items-center justify-center rounded-sm border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none w-8 h-8 ${getStatusStyle(cell.status)}`}
               title={`Niche #${cell.number} - ${cell.status}`}
               onClick={() => openGridDialog(cell)}
             >
-              <span className="text-[18px]">{cell.number}</span>
+              <span className="text-[15px]">{cell.number}</span>
             </button>
           ))}
         </div>
