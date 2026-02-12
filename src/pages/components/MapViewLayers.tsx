@@ -344,247 +344,252 @@ export function MarkersLayer() {
     }
 
     return (
-      <div className="flex flex-col gap-4 overflow-y-auto scrollbar-thin py-4 px-2">
-        <motion.form
-          layoutId="search-bar"
-          className="flex w-full gap-1"
-          role="search"
-          aria-label="Admin lot search"
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-        >
-          <div className="relative flex-1">
-            <Input
-              className="peer dark:bg-background h-9 w-full rounded-full bg-white ps-12 pe-10 text-xs md:h-14 md:text-sm"
-              placeholder="Search..."
-              aria-label="Search lot"
-              autoComplete="off"
-              name="search"
-            />
-            <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5">
-              <SearchIcon size={20} />
+      <div className="flex flex-col h-full">
+        <div className="sticky top-0 z-10 px-2 pt-4 pb-2 bg-transparent">
+          <motion.form
+            layoutId="search-bar"
+            className="flex w-full gap-1"
+            role="search"
+            aria-label="Admin lot search"
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+          >
+            <div className="relative flex-1">
+              <Input
+                className="peer dark:bg-background h-9 w-full rounded-full bg-white ps-12 pe-10 text-xs md:h-12 md:text-sm"
+                placeholder="Search..."
+                aria-label="Search lot"
+                autoComplete="off"
+                name="search"
+              />
+              <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5">
+                <SearchIcon size={20} />
+              </div>
+              {selectedPoint && (
+                <button
+                  className="text-muted-foreground/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 absolute inset-y-0 end-0 flex h-full w-10 items-center justify-center rounded-e-full transition-[color,box-shadow] outline-none focus:z-10 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer pr-5"
+                  aria-label="Clear search"
+                  type="button"
+                  onClick={handleClear}
+                >
+                  <X size={20} aria-hidden="true" />
+                </button>
+              )}
             </div>
-            {selectedPoint && (
-              <button
-                className="text-muted-foreground/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 absolute inset-y-0 end-0 flex h-full w-10 items-center justify-center rounded-e-full transition-[color,box-shadow] outline-none focus:z-10 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer pr-5"
-                aria-label="Clear search"
-                type="button"
-                onClick={handleClear}
-              >
-                <X size={20} aria-hidden="true" />
-              </button>
-            )}
-          </div>
-        </motion.form>
-        {/* Plot Information Header */}
-        <div className="bg-secondary p-5 w-full relative ">
-          <div className="absolute top-2 right-2">
-            { }
-            <Button size="icon" variant="outline" className="rounded-full" title="Print Niche" onClick={() => alert('Print Niche clicked')}>
-              <PrinterIcon className="w-4 h-4" />
-            </Button>
-          </div>
-
-          {/* Header */}
-          <div className="text-center">
-            <p className="text-xs tracking-wide uppercase text-muted-foreground">
-              Finisterre Gardenz
-            </p>
-            <h2 className="text-xl font-semibold text-foreground">
-              Plot Information
-            </h2>
-          </div>
+          </motion.form>
         </div>
+        <div className="flex flex-col gap-4 overflow-y-auto scrollbar-thin pb-4 px-2">
+          {/* Plot Information Header */}
+          <div className="bg-secondary p-5 w-full relative ">
+            <div className="absolute top-2 right-2">
+              { }
+              <Button size="icon" variant="outline" className="rounded-full" title="Print Niche" onClick={() => alert('Print Niche clicked')}>
+                <PrinterIcon className="w-4 h-4" />
+              </Button>
+            </div>
 
-        {/* Image Display */}
-        <div className="w-full h-full overflow-hidden">
-          <div className="relative p-2 ">
-            {!imageLoaded && <Skeleton className="w-full h-full absolute inset-0 " />}
-            <img
-              src={selectedPoint.image}
-              alt={selectedPoint.name}
-              className="object-cover w-full h-full rounded-md"
-              onLoad={() => setImageLoaded(true)}
-            />
+            {/* Header */}
+            <div className="text-center">
+              <p className="text-xs tracking-wide uppercase text-muted-foreground">
+                CemeterEase
+              </p>
+              <h2 className="text-xl font-semibold text-foreground">
+                Plot Information
+              </h2>
+            </div>
           </div>
 
-          <div className="space-y-2 p-4">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {selectedPoint.category === 'chambers' ? 'Memorial Chambers' : selectedPoint.category === 'columbarium' ? 'Columbarium' : selectedPoint.category === 'lawn_lot' ? 'Lawn Lot' : ''}
-            </span>
-            <p className="font-semibold text-foreground leading-tight">
-              {selectedPoint.category === 'chambers' && 'A dignified memorial chamber with individual niches for placement and remembrance.'}
-              {selectedPoint.category === 'columbarium' && 'A peaceful columbarium with organized niches for eternal rest and peaceful remembrance.'}
-              {selectedPoint.category === 'lawn_lot' && 'A serene lawn lot perfect for gatherings, ceremonies, and peaceful moments of reflection.'}
-            </p>
+          {/* Image Display */}
+          <div className="w-full h-full overflow-hidden">
+            <div className="relative p-2 ">
+              {!imageLoaded && <Skeleton className="w-full h-full absolute inset-0 " />}
+              <img
+                src={selectedPoint.image}
+                alt={selectedPoint.name}
+                className="object-cover w-full h-full rounded-md"
+                onLoad={() => setImageLoaded(true)}
+              />
+            </div>
 
-            {/* Divider */}
-            <div className="h-px bg-border" />
+            <div className="space-y-2 p-4">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {selectedPoint.category === 'chambers' ? 'Memorial Chambers' : selectedPoint.category === 'columbarium' ? 'Columbarium' : selectedPoint.category === 'lawn_lot' ? 'Lawn Lot' : ''}
+              </span>
+              <p className="font-semibold text-foreground leading-tight">
+                {selectedPoint.category === 'chambers' && 'A dignified memorial chamber with individual niches for placement and remembrance.'}
+                {selectedPoint.category === 'columbarium' && 'A peaceful columbarium with organized niches for eternal rest and peaceful remembrance.'}
+                {selectedPoint.category === 'lawn_lot' && 'A serene lawn lot perfect for gatherings, ceremonies, and peaceful moments of reflection.'}
+              </p>
 
-            {/* Stats Grid */}
-            {selectedPoint.category === 'chambers' || selectedPoint.category === 'columbarium'
-              ? (
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="space-y-0">
-                      <p className="text-xs text-muted-foreground">Rows</p>
-                      <p className="text-lg font-semibold">{selectedPoint.rows ?? '—'}</p>
-                    </div>
-                    <div className="space-y-0">
-                      <p className="text-xs text-muted-foreground">Columns</p>
-                      <p className="text-lg font-semibold">{selectedPoint.columns ?? '—'}</p>
-                    </div>
-                    <div className="space-y-0">
-                      <p className="text-xs text-muted-foreground">Total</p>
-                      <p className="text-lg font-semibold">
-                        {selectedPoint.rows && selectedPoint.columns
-                          ? selectedPoint.rows * selectedPoint.columns
-                          : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                )
-              : selectedPoint.category === 'lawn_lot'
+              {/* Divider */}
+              <div className="h-px bg-border" />
+
+              <div className="flex justify-evenly pt-1">
+                {/* Get direction button for activating navigation to the plot, and share button for sharing the plot details. These buttons are placeholders and can be implemented with actual functionality as needed. */}
+                <div className="flex flex-col items-center">
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="rounded-full w-10 h-10 flex items-center justify-center p-0"
+                    title="Get Direction"
+                    onClick={() => alert('Get Direction clicked')}
+                  >
+                    <Navigation className="size-4" />
+                  </Button>
+                  <span className="text-foreground-muted">Direction</span>
+                </div>
+                {/* this button will share the plot via coppy link or via qr code and if the user scan it or paste the link it will auto popup specific plot */}
+                <div className="flex flex-col items-center">
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="rounded-full w-10 h-10 flex items-center justify-center p-0"
+                    title="Share Plot"
+                    onClick={() => alert('Share Plot clicked')}
+                  >
+                    <ExternalLink className="size-4" />
+                  </Button>
+                  <span className="text-foreground-muted">Share</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="rounded-full w-10 h-10 flex items-center justify-center p-0"
+                    title="Edit Plot"
+                    onClick={() => alert('Edit Plot clicked')}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <span className="text-foreground-muted">Edit</span>
+                </div>
+              </div>
+
+              <div className="border-t"></div>
+              {/* Stats Grid */}
+              {selectedPoint.category === 'chambers' || selectedPoint.category === 'columbarium'
                 ? (
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div className="space-y-0">
-                        <p className="text-xs text-muted-foreground">Width</p>
-                        <p className="text-lg font-semibold">
-                          {selectedPoint.width}
-                        </p>
+                        <p className="text-xs text-muted-foreground">Rows</p>
+                        <p className="text-lg font-semibold">{selectedPoint.rows ?? '—'}</p>
                       </div>
                       <div className="space-y-0">
-                        <p className="text-xs text-muted-foreground">Length</p>
-                        <p className="text-lg font-semibold">
-                          {selectedPoint.length}
-                          m
-                        </p>
+                        <p className="text-xs text-muted-foreground">Columns</p>
+                        <p className="text-lg font-semibold">{selectedPoint.columns ?? '—'}</p>
                       </div>
                       <div className="space-y-0">
-                        <p className="text-xs text-muted-foreground">Area</p>
+                        <p className="text-xs text-muted-foreground">Total</p>
                         <p className="text-lg font-semibold">
-                          {selectedPoint.area}
-                          m²
+                          {selectedPoint.rows && selectedPoint.columns
+                            ? selectedPoint.rows * selectedPoint.columns
+                            : 'N/A'}
                         </p>
                       </div>
                     </div>
                   )
-                : null}
-
-            <div className="flex justify-evenly pt-1">
-              {/* Get direction button for activating navigation to the plot, and share button for sharing the plot details. These buttons are placeholders and can be implemented with actual functionality as needed. */}
-              <div className="flex flex-col items-center">
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
-                  title="Get Direction"
-                  onClick={() => alert('Get Direction clicked')}
-                >
-                  <Navigation className="size-4" />
-                </Button>
-                <span className="text-foreground-muted">Direction</span>
-              </div>
-              {/* this button will share the plot via coppy link or via qr code and if the user scan it or paste the link it will auto popup specific plot */}
-              <div className="flex flex-col items-center">
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
-                  title="Share Plot"
-                  onClick={() => alert('Share Plot clicked')}
-                >
-                  <ExternalLink className="size-4" />
-                </Button>
-                <span className="text-foreground-muted">Share</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
-                  title="Edit Plot"
-                  onClick={() => alert('Edit Plot clicked')}
-                >
-                  <Pencil className="size-4" />
-                </Button>
-                <span className="text-foreground-muted">Edit</span>
-              </div>
+                : selectedPoint.category === 'lawn_lot'
+                  ? (
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div className="space-y-0">
+                          <p className="text-xs text-muted-foreground">Width</p>
+                          <p className="text-lg font-semibold">
+                            {selectedPoint.width}
+                          </p>
+                        </div>
+                        <div className="space-y-0">
+                          <p className="text-xs text-muted-foreground">Length</p>
+                          <p className="text-lg font-semibold">
+                            {selectedPoint.length}
+                            m
+                          </p>
+                        </div>
+                        <div className="space-y-0">
+                          <p className="text-xs text-muted-foreground">Area</p>
+                          <p className="text-lg font-semibold">
+                            {selectedPoint.area}
+                            m²
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  : null}
             </div>
           </div>
-        </div>
 
-        {/* Category-specific Details */}
-        {(selectedPoint.category === 'lawn_lot') && (
-          <div className="bg-secondary rounded-md shadow-sm p-5 w-full">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Plot Status */}
-              <div className="text-center space-y-2">
-                <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Status</div>
-                <div className="flex justify-center">
-                  <div
-                    className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center"
-                    aria-label="Plot Status"
-                    title="Plot Status"
-                  >
-                    <span className="text-xs capitalize leading-none">{selectedPoint.status}</span>
+          {/* Category-specific Details */}
+          {(selectedPoint.category === 'lawn_lot') && (
+            <div className="bg-secondary rounded-md shadow-sm p-5 w-full">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Plot Status */}
+                <div className="text-center space-y-2">
+                  <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Status</div>
+                  <div className="flex justify-center">
+                    <div
+                      className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center"
+                      aria-label="Plot Status"
+                      title="Plot Status"
+                    >
+                      <span className="text-xs capitalize leading-none">{selectedPoint.status}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center space-y-2 border-l border-border">
+                  {/* Plot category */}
+                  <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Category</div>
+                  <div className="flex justify-center">
+                    <span
+                      className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center"
+                    >
+                      <span className="text-xs capitalize font-bold">{selectedPoint.lawn_type}</span>
+                    </span>
                   </div>
                 </div>
               </div>
-              <div className="text-center space-y-2 border-l border-border">
-                {/* Plot category */}
-                <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Category</div>
-                <div className="flex justify-center">
-                  <span
-                    className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center"
-                  >
-                    <span className="text-xs capitalize font-bold">{selectedPoint.lawn_type}</span>
-                  </span>
+            </div>
+          )}
+
+          {/* popup for columbarium or chambers with niche grid display */}
+          {(selectedPoint.category === 'columbarium'
+            || selectedPoint.category === 'chambers') && (
+            <div className="space-y-2">
+              {/* {Niche grids are common in columbariums and chambers, showing available niches.} */}
+              {selectedPoint.rows && selectedPoint.columns && (
+                <NicheGrids
+                  rows={selectedPoint.rows}
+                  cols={selectedPoint.columns}
+                />
+              )}
+
+              <div className="grid grid-cols-4 gap-2 text-xs bg-secondary p-2 rounded-md">
+                <div className="rounded-lg bg-green-50 p-2 text-center dark:bg-green-200 border">
+                  <div className="font-semibold text-green-700">{pointsData.features.filter(f => f.properties.status === 'available').length}</div>
+                  <div className="text-green-600">Available</div>
+                </div>
+                <div className="rounded bg-yellow-50 p-2 text-center dark:bg-yellow-200 border">
+                  <div className="font-semibold text-yellow-700">{pointsData.features.filter(f => f.properties.status === 'reserved').length}</div>
+                  <div className="text-yellow-600">Reserved</div>
+                </div>
+                <div className="rounded bg-red-50 p-2 text-center dark:bg-red-200 border">
+                  <div className="font-semibold text-red-700">{pointsData.features.filter(f => f.properties.status === 'sold').length}</div>
+                  <div className="text-red-600">Sold</div>
+                </div>
+                <div className="rounded bg-cyan-200 p-2 text-center dark:bg-cyan-400 border">
+                  <div className="font-semibold text-cyan-700">{pointsData.features.filter(f => f.properties.status === 'hold').length}</div>
+                  <div className="text-cyan-600">Hold</div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* popup for columbarium or chambers with niche grid display */}
-        {(selectedPoint.category === 'columbarium'
-          || selectedPoint.category === 'chambers') && (
-          <div className="space-y-2">
-            {/* {Niche grids are common in columbariums and chambers, showing available niches.} */}
-            {selectedPoint.rows && selectedPoint.columns && (
-              <NicheGrids
-                rows={selectedPoint.rows}
-                cols={selectedPoint.columns}
-              />
-            )}
-
-            <div className="grid grid-cols-4 gap-2 text-xs bg-secondary p-2 rounded-md">
-              <div className="rounded-lg bg-green-50 p-2 text-center dark:bg-green-200 border">
-                <div className="font-semibold text-green-700">{pointsData.features.filter(f => f.properties.status === 'available').length}</div>
-                <div className="text-green-600">Available</div>
-              </div>
-              <div className="rounded bg-yellow-50 p-2 text-center dark:bg-yellow-200 border">
-                <div className="font-semibold text-yellow-700">{pointsData.features.filter(f => f.properties.status === 'reserved').length}</div>
-                <div className="text-yellow-600">Reserved</div>
-              </div>
-              <div className="rounded bg-red-50 p-2 text-center dark:bg-red-200 border">
-                <div className="font-semibold text-red-700">{pointsData.features.filter(f => f.properties.status === 'sold').length}</div>
-                <div className="text-red-600">Sold</div>
-              </div>
-              <div className="rounded bg-cyan-200 p-2 text-center dark:bg-cyan-400 border">
-                <div className="font-semibold text-cyan-700">{pointsData.features.filter(f => f.properties.status === 'hold').length}</div>
-                <div className="text-cyan-600">Hold</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* else */}
-        {!['lawn_lot', 'columbarium', 'chambers'].includes(
-          selectedPoint.category,
-        ) && (
-          <p className="text-sm text-gray-500 italic">
-            No additional info available.
-          </p>
-        )}
+          {/* else */}
+          {!['lawn_lot', 'columbarium', 'chambers'].includes(
+            selectedPoint.category,
+          ) && (
+            <p className="text-sm text-gray-500 italic">
+              No additional info available.
+            </p>
+          )}
+        </div>
       </div>
     )
   }
