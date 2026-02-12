@@ -1,4 +1,5 @@
 /* eslint-disable no-alert */
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import { ExternalLink, MapPin, Navigation, Pencil, PrinterIcon, SearchIcon, X } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -277,6 +278,42 @@ export function MarkersLayer() {
     return null
   }
 
+  // Floating search bar on the map when sidebar is closed
+  function FloatingSearchBar() {
+    const { open, openMobile, isMobile } = useSidebar()
+    const isOpen = isMobile ? openMobile : open
+
+    return (
+      <AnimatePresence>
+        {!isOpen && (
+          <motion.form
+            layoutId="search-bar"
+            className="flex w-full gap-1 max-w-md absolute top-2 right-1/2 transform translate-x-1/2 z-20"
+            role="search"
+            aria-label="Admin lot search"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+          >
+            <div className="relative flex-1">
+              <Input
+                className="peer dark:bg-background h-9 w-full rounded-full bg-white ps-12 pe-10 text-xs md:h-14 md:text-sm"
+                placeholder="Search..."
+                aria-label="Search lot"
+                autoComplete="off"
+                name="search"
+              />
+              <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5">
+                <SearchIcon size={20} />
+              </div>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
+    )
+  }
+
   function SidebarContentComponent() {
     const [imageLoaded, setImageLoaded] = useState(false)
 
@@ -308,7 +345,13 @@ export function MarkersLayer() {
 
     return (
       <div className="flex flex-col gap-4 overflow-y-auto scrollbar-thin py-4 px-2">
-        <form className="flex w-full gap-1" role="search" aria-label="Admin lot search">
+        <motion.form
+          layoutId="search-bar"
+          className="flex w-full gap-1"
+          role="search"
+          aria-label="Admin lot search"
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+        >
           <div className="relative flex-1">
             <Input
               className="peer dark:bg-background h-9 w-full rounded-full bg-white ps-12 pe-10 text-xs md:h-14 md:text-sm"
@@ -331,7 +374,7 @@ export function MarkersLayer() {
               </button>
             )}
           </div>
-        </form>
+        </motion.form>
         {/* Plot Information Header */}
         <div className="bg-secondary p-5 w-full relative ">
           <div className="absolute top-2 right-2">
@@ -548,12 +591,15 @@ export function MarkersLayer() {
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <MarkersLayerContent />
-      <Sidebar>
-        <SidebarContent>
-          <SidebarContentComponent />
-        </SidebarContent>
-      </Sidebar>
+      <LayoutGroup>
+        <MarkersLayerContent />
+        <FloatingSearchBar />
+        <Sidebar>
+          <SidebarContent>
+            <SidebarContentComponent />
+          </SidebarContent>
+        </Sidebar>
+      </LayoutGroup>
 
       <main className="relative">
         {selectedPoint && <SidebarTrigger />}
