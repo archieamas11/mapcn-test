@@ -323,9 +323,14 @@ interface SidebarContentComponentProps {
 function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarContentComponentProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   useEffect(() => {
     setImageLoaded(false)
+    // Check if the image is already cached/loaded
+    if (imgRef.current?.complete) {
+      setImageLoaded(true)
+    }
   }, [selectedPoint])
 
   const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
@@ -361,7 +366,7 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
   return (
     <div className="flex flex-col h-full">
       {/* Plot information searchbar */}
-      <div className="sticky top-0 z-10 px-2 pt-4 pb-2 bg-transparent">
+      <div className="sticky top-0 z-10 px-2 py-4 bg-transparent">
         <motion.form
           layoutId="search-bar"
           className="flex w-full gap-1"
@@ -371,7 +376,7 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
         >
           <div className="relative flex-1">
             <Input
-              className="peer dark:bg-background h-9 w-full rounded-full bg-white ps-12 pe-10 text-xs md:h-12 md:text-sm"
+              className="peer dark:bg-background h-9 w-full rounded-full bg-muted ps-12 pe-10 text-xs md:h-12 md:text-sm"
               placeholder="Search..."
               aria-label="Search lot"
               autoComplete="off"
@@ -394,44 +399,29 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
         </motion.form>
       </div>
 
-      <div className="flex flex-col h-full w-full overflow-y-auto scrollbar-thin px-2 py-4">
-        {/* Plot Information Header */}
-        <div className="bg-secondary p-5 w-full ">
-          {/* Header */}
-          <div className="text-center">
-            <p className="text-xs tracking-wide uppercase text-muted-foreground">
-              CemeterEase
-            </p>
-            <h2 className="text-xl font-semibold text-foreground">
-              Plot Information
-            </h2>
-          </div>
-        </div>
-
+      <div className="flex flex-col h-full w-full overflow-y-auto scrollbar-thin px-2 space-y-2">
         {/* Image and plot information Display */}
-        <div className="w-full">
-          <div className="relative p-2 ">
-            {!imageLoaded && <Skeleton className="w-full h-full absolute inset-0 " />}
+        <div className="w-full bg-primary/40 rounded-3xl">
+          <div className="relative">
+            {!imageLoaded && <Skeleton className="w-full rounded-t-3xl absolute inset-0" />}
             <img
+              ref={imgRef}
               src={selectedPoint.image}
               alt={selectedPoint.name}
-              className="object-cover w-full h-full rounded-md"
+              className="object-cover w-full h-50 rounded-t-3xl"
               onLoad={() => setImageLoaded(true)}
             />
           </div>
 
           <div className="space-y-2 p-4">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <span className="text-lg font-medium text-muted-foreground uppercase tracking-wide">
               {selectedPoint.category === 'chambers' ? 'Memorial Chambers' : selectedPoint.category === 'columbarium' ? 'Columbarium' : selectedPoint.category === 'lawn_lot' ? 'Lawn Lot' : ''}
             </span>
-            <p className="font-semibold text-foreground leading-tight">
+            <p className="font-semibold text-sm text-foreground leading-tight mb-8">
               {selectedPoint.category === 'chambers' && 'A dignified memorial chamber with individual niches for placement and remembrance.'}
               {selectedPoint.category === 'columbarium' && 'A peaceful columbarium with organized niches for eternal rest and peaceful remembrance.'}
               {selectedPoint.category === 'lawn_lot' && 'A serene lawn lot perfect for gatherings, ceremonies, and peaceful moments of reflection.'}
             </p>
-
-            {/* Divider */}
-            <div className="h-px bg-border" />
 
             {/* plot information buttons */}
             <div className="flex justify-evenly">
@@ -439,7 +429,7 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
               <div className="flex flex-col items-center">
                 <Button
                   size="lg"
-                  variant="secondary"
+                  variant="outline"
                   className="rounded-full w-10 h-10 flex items-center justify-center p-0"
                   title="Get Direction"
                   onClick={() => alert('Get Direction clicked')}
@@ -452,7 +442,7 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
               <div className="flex flex-col items-center">
                 <Button
                   size="lg"
-                  variant="secondary"
+                  variant="outline"
                   className="rounded-full w-10 h-10 flex items-center justify-center p-0"
                   title="Share Plot"
                   onClick={() => alert('Share Plot clicked')}
@@ -464,7 +454,7 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
               <div className="flex flex-col items-center">
                 <Button
                   size="lg"
-                  variant="secondary"
+                  variant="outline"
                   className="rounded-full w-10 h-10 flex items-center justify-center p-0"
                   title="Print Plot"
                   onClick={() => alert('Print Plot clicked')}
@@ -477,7 +467,7 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
               <div className="flex flex-col items-center">
                 <Button
                   size="lg"
-                  variant="secondary"
+                  variant="outline"
                   className="rounded-full w-10 h-10 flex items-center justify-center p-0"
                   title="Edit Plot"
                   onClick={handleEditPlot}
@@ -493,57 +483,58 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
               selectedPoint={selectedPoint}
               onClose={() => setIsEditOpen(false)}
             />
+          </div>
+        </div>
 
-            <div className="border-t"></div>
-            {/* Stats Grid */}
-            {selectedPoint.category === 'chambers' || selectedPoint.category === 'columbarium'
+        {/* Stats Grid */}
+        <div className="bg-primary/40 p-2 rounded-3xl">
+          {selectedPoint.category === 'chambers' || selectedPoint.category === 'columbarium'
+            ? (
+                <div className="grid grid-cols-3 divide-x divide-border text-center rounded-lg overflow-hidden">
+                  <div className="flex flex-col items-center py-2">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Rows</span>
+                    <span className="text-lg font-bold text-foreground">{selectedPoint.rows ?? '—'}</span>
+                  </div>
+                  <div className="flex flex-col items-center py-2">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Columns</span>
+                    <span className="text-lg font-bold text-foreground">{selectedPoint.columns ?? '—'}</span>
+                  </div>
+                  <div className="flex flex-col items-center py-2">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Total</span>
+                    <span className="text-lg font-bold text-foreground">
+                      {selectedPoint.rows && selectedPoint.columns
+                        ? selectedPoint.rows * selectedPoint.columns
+                        : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              )
+            : selectedPoint.category === 'lawn_lot'
               ? (
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div className="space-y-0">
-                      <p className="text-xs text-muted-foreground">Rows</p>
-                      <p className="text-lg font-semibold">{selectedPoint.rows ?? '—'}</p>
-                    </div>
-                    <div className="space-y-0">
-                      <p className="text-xs text-muted-foreground">Columns</p>
-                      <p className="text-lg font-semibold">{selectedPoint.columns ?? '—'}</p>
-                    </div>
-                    <div className="space-y-0">
-                      <p className="text-xs text-muted-foreground">Total</p>
+                      <p className="text-xs text-muted-foreground">Width</p>
                       <p className="text-lg font-semibold">
-                        {selectedPoint.rows && selectedPoint.columns
-                          ? selectedPoint.rows * selectedPoint.columns
-                          : 'N/A'}
+                        {selectedPoint.width}
+                      </p>
+                    </div>
+                    <div className="space-y-0">
+                      <p className="text-xs text-muted-foreground">Length</p>
+                      <p className="text-lg font-semibold">
+                        {selectedPoint.length}
+                        m
+                      </p>
+                    </div>
+                    <div className="space-y-0">
+                      <p className="text-xs text-muted-foreground">Area</p>
+                      <p className="text-lg font-semibold">
+                        {selectedPoint.area}
+                        m²
                       </p>
                     </div>
                   </div>
                 )
-              : selectedPoint.category === 'lawn_lot'
-                ? (
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div className="space-y-0">
-                        <p className="text-xs text-muted-foreground">Width</p>
-                        <p className="text-lg font-semibold">
-                          {selectedPoint.width}
-                        </p>
-                      </div>
-                      <div className="space-y-0">
-                        <p className="text-xs text-muted-foreground">Length</p>
-                        <p className="text-lg font-semibold">
-                          {selectedPoint.length}
-                          m
-                        </p>
-                      </div>
-                      <div className="space-y-0">
-                        <p className="text-xs text-muted-foreground">Area</p>
-                        <p className="text-lg font-semibold">
-                          {selectedPoint.area}
-                          m²
-                        </p>
-                      </div>
-                    </div>
-                  )
-                : null}
-          </div>
+              : null}
         </div>
 
         {/* Category-specific Details */}
@@ -590,21 +581,29 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
               />
             )}
 
-            <div className="grid grid-cols-4 gap-2 text-xs bg-secondary p-2 rounded-md">
-              <div className="rounded-lg bg-green-50 p-2 text-center dark:bg-green-200 border">
-                <div className="font-semibold text-green-700">{pointsData.features.filter(f => f.properties.status === 'available').length}</div>
+            <div className="grid grid-cols-4 gap-2 text-xs bg-secondary p-1 rounded-3xl justify-evenly">
+              <div className="flex justify-center items-center gap-1">
+                <div className="rounded-full bg-green-50 dark:bg-green-200 p-2">
+                  <div className="font-semibold">{pointsData.features.filter(f => f.properties.status === 'available').length}</div>
+                </div>
                 <div className="text-green-600">Available</div>
               </div>
-              <div className="rounded bg-yellow-50 p-2 text-center dark:bg-yellow-200 border">
-                <div className="font-semibold text-yellow-700">{pointsData.features.filter(f => f.properties.status === 'reserved').length}</div>
+              <div className="flex justify-center items-center gap-1">
+                <div className="rounded-full bg-yellow-50 dark:bg-yellow-200 p-2">
+                  <div className="font-semibold">{pointsData.features.filter(f => f.properties.status === 'reserved').length}</div>
+                </div>
                 <div className="text-yellow-600">Reserved</div>
               </div>
-              <div className="rounded bg-red-50 p-2 text-center dark:bg-red-200 border">
-                <div className="font-semibold text-red-700">{pointsData.features.filter(f => f.properties.status === 'sold').length}</div>
+              <div className="flex justify-center items-center gap-1">
+                <div className="rounded-full bg-red-50 dark:bg-red-200 p-2">
+                  <div className="font-semibold">{pointsData.features.filter(f => f.properties.status === 'sold').length}</div>
+                </div>
                 <div className="text-red-600">Sold</div>
               </div>
-              <div className="rounded bg-cyan-200 p-2 text-center dark:bg-cyan-400 border">
-                <div className="font-semibold text-cyan-700">{pointsData.features.filter(f => f.properties.status === 'hold').length}</div>
+              <div className="flex justify-center items-center gap-1">
+                <div className="rounded-full bg-cyan-200 dark:bg-cyan-400 p-2">
+                  <div className="font-semibold">{pointsData.features.filter(f => f.properties.status === 'hold').length}</div>
+                </div>
                 <div className="text-cyan-600">Hold</div>
               </div>
             </div>
@@ -657,6 +656,7 @@ export function MarkersLayer() {
           showFullscreen
           resetViewport
           use3D={true}
+          editMarker={true}
         />
       </main>
     </SidebarProvider>

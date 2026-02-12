@@ -79,7 +79,7 @@ export function NicheGrids({
   return (
     <>
       {isPaginated && (
-        <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="mb-2 flex items-center justify-between gap-2 px-4">
           <div className="text-sm text-muted-foreground">
             {columnsRangeLabel}
           </div>
@@ -110,7 +110,7 @@ export function NicheGrids({
         </div>
       )}
 
-      <div className="rounded-lg bg-secondary p-2 overflow-hidden">
+      <div className="overflow-hidden flex justify-center items-center">
         <div
           className="grid gap-1"
           style={{
@@ -120,7 +120,7 @@ export function NicheGrids({
           {visibleCells.map(cell => (
             <button
               key={`${cell.row}-${cell.col}`}
-              className={`flex cursor-pointer items-center justify-center rounded-sm border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none w-8 h-8 ${getStatusStyle(cell.status)}`}
+              className={`flex cursor-pointer items-center justify-center rounded-lg border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none w-8 h-8 ${getStatusStyle(cell.status)}`}
               title={`Niche #${cell.number} - ${cell.status}`}
               onClick={() => openGridDialog(cell)}
             >

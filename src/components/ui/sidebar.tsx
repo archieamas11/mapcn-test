@@ -11,16 +11,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import {
-  TooltipProvider,
-} from '@/components/ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useSidebarStore } from '@/stores/sidebar-store'
 
 const SIDEBAR_WIDTH = '25rem'
-const SIDEBAR_WIDTH_MOBILE = '18rem'
+const SIDEBAR_WIDTH_MOBILE = '20rem'
 const SIDEBAR_WIDTH_ICON = '3rem'
-const SIDEBAR_KEYBOARD_SHORTCUT = 'b'
 
 type SidebarContextProps = {
   state: 'expanded' | 'collapsed'
@@ -89,42 +85,24 @@ function SidebarProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Adds a keyboard shortcut to toggle the sidebar.
-  React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-        (event.metaKey || event.ctrlKey)
-      ) {
-        event.preventDefault();
-        storeApi.getState().toggleSidebar();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [storeApi]);
-
   return (
-    <TooltipProvider delay={0}>
-      <div
-        data-slot="sidebar-wrapper"
-        style={
-          {
-            '--sidebar-width': SIDEBAR_WIDTH,
-            '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
-            ...style,
-          } as React.CSSProperties
-        }
-        className={cn(
-          'group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full',
-          className,
-        )}
-        {...props}
-      >
-        {children}
-      </div>
-    </TooltipProvider>
+    <div
+      data-slot="sidebar-wrapper"
+      style={
+        {
+          '--sidebar-width': SIDEBAR_WIDTH,
+          '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
+          ...style,
+        } as React.CSSProperties
+      }
+      className={cn(
+        'group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full',
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </div>
   )
 }
 

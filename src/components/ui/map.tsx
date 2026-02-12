@@ -1,6 +1,6 @@
 import type { MarkerOptions, PopupOptions } from 'maplibre-gl'
 import type { ReactNode } from 'react'
-import { Loader2, Locate, Maximize, Minus, Plus, RefreshCcw, X } from 'lucide-react'
+import { Loader2, Locate, Maximize, Minus, Pencil, Plus, RefreshCcw, X } from 'lucide-react'
 import MapLibreGL from 'maplibre-gl'
 import {
   createContext,
@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Toggle } from './toggle'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuPositioner, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 
 // Check document class for theme (works with next-themes, etc.)
 function getDocumentTheme(): Theme | null {
@@ -782,6 +783,8 @@ interface MapControlsProps {
   className?: string
   /** Callback with user coordinates when located */
   onLocate?: (coords: { longitude: number, latitude: number }) => void
+  /** Show edit marker button (default: false) */
+  editMarker?: boolean
 }
 
 const positionClasses = {
@@ -833,12 +836,18 @@ function MapControls({
   showLocate = false,
   showFullscreen = false,
   resetViewport = false,
+  editMarker = false, 
   use3D = false,
   className,
   onLocate,
 }: MapControlsProps) {
   const { map, resetToInitial, setUserLocation } = useMap()
   const [waitingForLocation, setWaitingForLocation] = useState(false)
+  const [editMenuOpen, setEditMenuOpen] = useState(false)
+
+  const handleEditMarker = useCallback(() => {
+    setEditMenuOpen(true)
+  }, [])
 
   const handleZoomIn = useCallback(() => {
     map?.zoomTo(map.getZoom() + 1, { duration: 300 })
@@ -962,6 +971,24 @@ function MapControls({
             </Toggle>
           </ControlButton>
         </ControlGroup> 
+      )}
+      {editMarker && (
+        <DropdownMenu open={editMenuOpen} onOpenChange={setEditMenuOpen}>
+          <DropdownMenuTrigger  className={cn('flex items-center justify-center size-8 hover:bg-accent dark:hover:bg-accent/40 transition-colors')} aria-label="Edit marker">
+            <ControlGroup>
+              <ControlButton onClick={handleEditMarker} label="Toggle edit marker menu">
+                <Pencil className="size-4" />
+              </ControlButton>
+            </ControlGroup> 
+          </DropdownMenuTrigger>
+          <DropdownMenuPositioner>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => console.log('Edit single marker')}>Edit Single Marker</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => console.log('Edit multiple markers')}>Edit Multiple Markers</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => console.log('Copy marker')}>Copy Marker</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPositioner>
+        </DropdownMenu>
       )}
     </div>
   )
