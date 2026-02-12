@@ -597,7 +597,6 @@ export function MarkersLayer() {
   return (
     <SidebarProvider defaultOpen={false}>
       <LayoutGroup>
-        <MarkersLayerContent />
         <FloatingSearchBar />
         <Sidebar>
           <SidebarContent>
@@ -606,6 +605,7 @@ export function MarkersLayer() {
         </Sidebar>
       </LayoutGroup>
 
+      <MarkersLayerContent />
       <main className="relative">
         {selectedPoint && <SidebarTrigger />}
         <MapControls
