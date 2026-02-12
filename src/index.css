@@ -211,7 +211,7 @@
       }
   
       .scrollbar-thin::-webkit-scrollbar-thumb {
-        background-color: hsl(var(--muted));
+        background-color: hsl(var(--primary));
         border-radius: 9999px;
       }
   

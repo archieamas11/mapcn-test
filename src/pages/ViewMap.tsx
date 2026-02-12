@@ -1,6 +1,6 @@
 import type { MapRef } from '@/components/ui/map'
 import { useEffect, useRef, useState } from 'react'
-import { Map, MapControls } from '@/components/ui/map'
+import { Map } from '@/components/ui/map'
 import { styles } from './components/map.styles'
 import { MarkersLayer } from './components/MapViewLayers'
 
@@ -28,17 +28,6 @@ function App() {
               : undefined
           }
         >
-          { /* Map controls with various features enabled */ }
-          <MapControls
-            position="bottom-right"
-            showZoom
-            showCompass
-            showLocate
-            showFullscreen
-            resetViewport
-            use3D={true}
-          />
-
           {/* Render markers for each place in the data */ }
           <MarkersLayer />
         </Map>

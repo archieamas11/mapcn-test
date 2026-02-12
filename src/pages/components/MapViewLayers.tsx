@@ -1,9 +1,11 @@
-import { ExternalLink, MapPin, Navigation, PrinterIcon } from 'lucide-react'
+/* eslint-disable no-alert */
+import { ExternalLink, MapPin, Navigation, Pencil, PrinterIcon, SearchIcon } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import { useEffect, useId, useRef, useState } from 'react'
 import { renderToString } from 'react-dom/server'
 import { Button } from '@/components/ui/button'
-import { useMap } from '@/components/ui/map'
+import { Input } from '@/components/ui/input'
+import { MapControls, useMap } from '@/components/ui/map'
 import {
   Sidebar,
   SidebarContent,
@@ -292,11 +294,25 @@ export function MarkersLayer() {
     }
 
     return (
-      <div className="flex flex-col gap-4 p-4 overflow-y-auto scrollbar-thin">
+      <div className="flex flex-col gap-4 overflow-y-auto scrollbar-thin py-4 px-2">
+        <form className="flex w-full gap-1" role="search" aria-label="Admin lot search">
+          <div className="relative flex-1">
+            <Input
+              className="peer dark:bg-background h-9 w-full rounded-full bg-white ps-9 pe-10 text-xs md:h-10 md:text-sm"
+              placeholder="Search..."
+              aria-label="Search lot"
+              autoComplete="off"
+              name="search"
+            />
+            <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3">
+              <SearchIcon size={16} />
+            </div>
+          </div>
+        </form>
         {/* Plot Information Header */}
-        <div className="bg-secondary rounded-md shadow-sm p-5 w-full relative ">
+        <div className="bg-secondary p-5 w-full relative ">
           <div className="absolute top-2 right-2">
-            {/* eslint-disable-next-line no-alert */}
+            { }
             <Button size="icon" variant="outline" className="rounded-full" title="Print Niche" onClick={() => alert('Print Niche clicked')}>
               <PrinterIcon className="w-4 h-4" />
             </Button>
@@ -314,13 +330,13 @@ export function MarkersLayer() {
         </div>
 
         {/* Image Display */}
-        <div className="w-full bg-secondary/80 border rounded-md shadow-md overflow-hidden">
-          <div className="h-50 relative">
-            {!imageLoaded && <Skeleton className="w-full h-full absolute inset-0" />}
+        <div className="w-full h-full overflow-hidden">
+          <div className="relative p-2 ">
+            {!imageLoaded && <Skeleton className="w-full h-full absolute inset-0 " />}
             <img
               src={selectedPoint.image}
               alt={selectedPoint.name}
-              className="object-cover w-full h-full"
+              className="object-cover w-full h-full rounded-md"
               onLoad={() => setImageLoaded(true)}
             />
           </div>
@@ -387,18 +403,45 @@ export function MarkersLayer() {
                   )
                 : null}
 
-            <div className="flex gap-2 pt-1">
+            <div className="flex justify-evenly pt-1">
               {/* Get direction button for activating navigation to the plot, and share button for sharing the plot details. These buttons are placeholders and can be implemented with actual functionality as needed. */}
-              {/* eslint-disable-next-line no-alert */}
-              <Button size="sm" className="h-8 flex-1 rounded-full" title="Get Direction" onClick={() => alert('Get Direction clicked')}>
-                <Navigation className="size-3.5" />
-                Direction
-              </Button>
+              <div className="flex flex-col items-center">
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
+                  title="Get Direction"
+                  onClick={() => alert('Get Direction clicked')}
+                >
+                  <Navigation className="size-4" />
+                </Button>
+                <span className="text-foreground-muted">Direction</span>
+              </div>
               {/* this button will share the plot via coppy link or via qr code and if the user scan it or paste the link it will auto popup specific plot */}
-              {/* eslint-disable-next-line no-alert */}
-              <Button size="sm" variant="ghost" className="h-8" title="Share Plot" onClick={() => alert('Share Plot clicked')}>
-                <ExternalLink className="size-3.5" />
-              </Button>
+              <div className="flex flex-col items-center">
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
+                  title="Share Plot"
+                  onClick={() => alert('Share Plot clicked')}
+                >
+                  <ExternalLink className="size-4" />
+                </Button>
+                <span className="text-foreground-muted">Share</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
+                  title="Edit Plot"
+                  onClick={() => alert('Edit Plot clicked')}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+                <span className="text-foreground-muted">Edit</span>
+              </div>
             </div>
           </div>
         </div>
@@ -489,9 +532,17 @@ export function MarkersLayer() {
         </SidebarContent>
       </Sidebar>
 
-      <main className="z-50 mr-10">
-        <SidebarTrigger />
-        {/* Main content going here */}
+      <main className="relative">
+        {selectedPoint && <SidebarTrigger />}
+        <MapControls
+          position="top-left"
+          showZoom
+          showCompass
+          showLocate
+          showFullscreen
+          resetViewport
+          use3D={true}
+        />
       </main>
     </SidebarProvider>
   )

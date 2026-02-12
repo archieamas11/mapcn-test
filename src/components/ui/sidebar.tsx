@@ -1,4 +1,4 @@
-import { PanelRightOpen,PanelRightClose  } from "lucide-react";
+import { PanelRightOpen, Play  } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
@@ -226,7 +226,7 @@ function Sidebar({
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
+            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
           className
         )}
         {...props}
@@ -248,27 +248,50 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, open } = useSidebar();
 
-  const { open } = useSidebar();
   return (
     <Button
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
-      variant="default"
-      size="lg"
-      className={cn("size-10 bg-sidebar rounded-r-xl absolute top-1/2", className)}
+      size="icon"
+      className={cn(
+        `
+        absolute top-1/2 -translate-y-1/2
+        -right-10
+        h-15 w-12
+        rounded-r-lg
+        bg-sidebar
+        transition-all duration-300 ease-in-out
+        hover:scale-105 hover:shadow-lg
+        active:scale-95
+        `,
+        className
+      )}
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();
       }}
       {...props}
     >
-      {open ? <PanelRightClose className="text-sidebar-foreground" /> : <PanelRightOpen className="text-sidebar-foreground" />}
+      <div
+        className={cn(
+          "transition-transform duration-300",
+          open ? "rotate-180" : "rotate-0"
+        )}
+      >
+        {open ? (
+          <Play className="mr-3 h-8 w-8 text-sidebar-foreground" fill="currentColor" />
+        ) : (
+          <Play className="ml-3 h-8 w-8 text-sidebar-foreground" fill="currentColor" />
+        )}
+      </div>
+
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
 }
+
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   const { toggleSidebar } = useSidebar();
