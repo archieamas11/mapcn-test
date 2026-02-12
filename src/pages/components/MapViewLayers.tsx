@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSidebarStore } from '@/stores/sidebar-store'
+import EditPlotDialog from './dialogs/EditPlotDialog'
 import { NicheGrids } from './NicheGrids'
 
 // Generate random points around Finisterre Gardenz
@@ -111,7 +112,6 @@ function MarkersLayerContent({ selectedPoint, setSelectedPoint }: MarkersLayerCo
       isMobile: s.isMobile,
     })),
   )
-
   useEffect(() => {
     if (!map || !isLoaded)
       return
@@ -322,6 +322,7 @@ interface SidebarContentComponentProps {
 
 function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarContentComponentProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
 
   useEffect(() => {
     setImageLoaded(false)
@@ -345,6 +346,10 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
     setSelectedPoint(null)
   }
 
+  const handleEditPlot = () => {
+    setIsEditOpen(true)
+  }
+
   if (!selectedPoint) {
     return (
       <div className="p-4 text-center text-muted-foreground">
@@ -355,6 +360,7 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
 
   return (
     <div className="flex flex-col h-full">
+      {/* Plot information searchbar */}
       <div className="sticky top-0 z-10 px-2 pt-4 pb-2 bg-transparent">
         <motion.form
           layoutId="search-bar"
@@ -388,16 +394,9 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
         </motion.form>
       </div>
 
-      <div className="flex flex-col gap-4 overflow-y-auto scrollbar-thin pb-4 px-2">
+      <div className="flex flex-col h-full w-full overflow-y-auto scrollbar-thin px-2 py-4">
         {/* Plot Information Header */}
-        <div className="bg-secondary p-5 w-full relative ">
-          <div className="absolute top-2 right-2">
-            { }
-            <Button size="icon" variant="outline" className="rounded-full" title="Print Niche" onClick={() => alert('Print Niche clicked')}>
-              <PrinterIcon className="w-4 h-4" />
-            </Button>
-          </div>
-
+        <div className="bg-secondary p-5 w-full ">
           {/* Header */}
           <div className="text-center">
             <p className="text-xs tracking-wide uppercase text-muted-foreground">
@@ -409,8 +408,8 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
           </div>
         </div>
 
-        {/* Image Display */}
-        <div className="w-full h-full overflow-hidden">
+        {/* Image and plot information Display */}
+        <div className="w-full">
           <div className="relative p-2 ">
             {!imageLoaded && <Skeleton className="w-full h-full absolute inset-0 " />}
             <img
@@ -434,7 +433,8 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
             {/* Divider */}
             <div className="h-px bg-border" />
 
-            <div className="flex justify-evenly pt-1">
+            {/* plot information buttons */}
+            <div className="flex justify-evenly">
               {/* Get direction button for activating navigation to the plot, and share button for sharing the plot details. These buttons are placeholders and can be implemented with actual functionality as needed. */}
               <div className="flex flex-col items-center">
                 <Button
@@ -466,14 +466,33 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
                   size="lg"
                   variant="secondary"
                   className="rounded-full w-10 h-10 flex items-center justify-center p-0"
+                  title="Print Plot"
+                  onClick={() => alert('Print Plot clicked')}
+                >
+                  <PrinterIcon className="size-4" />
+                </Button>
+                <span className="text-foreground-muted">Print</span>
+              </div>
+
+              <div className="flex flex-col items-center">
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
                   title="Edit Plot"
-                  onClick={() => alert('Edit Plot clicked')}
+                  onClick={handleEditPlot}
                 >
                   <Pencil className="size-4" />
                 </Button>
                 <span className="text-foreground-muted">Edit</span>
               </div>
             </div>
+
+            <EditPlotDialog
+              isOpen={isEditOpen}
+              selectedPoint={selectedPoint}
+              onClose={() => setIsEditOpen(false)}
+            />
 
             <div className="border-t"></div>
             {/* Stats Grid */}

@@ -1,14 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import GridDialog from './dialogs/GridDialog'
+
+const MAX_COLS_PER_PAGE = 10
 
 function getCellSize(cols: number) {
   if (cols <= 10)
-    return 'min-h-8 min-w-8 text-lg'
+    return 'min-h-8 text-lg'
   if (cols <= 20)
-    return 'min-h-6 min-w-5 text-lg'
+    return 'min-h-6 text-lg'
   if (cols <= 30)
-    return 'min-h-5 min-w-5 text-lg'
-  return 'min-h-4 min-w-4 text-lg'
+    return 'min-h-5 text-lg'
+  return 'min-h-4 text-lg'
 }
 
 interface Cell {
@@ -18,6 +21,25 @@ interface Cell {
   number: number
 }
 
+function generateGridCells(rows: number, cols: number) {
+  const cells: Cell[] = []
+  const statuses = ['available', 'sold', 'reserved', 'hold'] as const
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const randomStatus = statuses[Math.floor(Math.random() * statuses.length)]
+      cells.push({
+        row: r,
+        col: c,
+        status: randomStatus,
+        number: r * cols + c + 1,
+      })
+    }
+  }
+
+  return cells
+}
+
 export function NicheGrids({
   rows,
   cols,
@@ -25,31 +47,36 @@ export function NicheGrids({
   rows: number
   cols: number
 }) {
-  // Generate grid cells with random status
-  const generateGridCells = () => {
-    const cells: Cell[] = []
-    const statuses = ['available', 'sold', 'reserved', 'hold']
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const randomStatus
-          = statuses[Math.floor(Math.random() * statuses.length)]
-        cells.push({
-          row: r,
-          col: c,
-          status: randomStatus,
-          number: r * cols + c + 1,
-        })
-      }
-    }
-    return cells
-  }
-
   const [selectedCell, setSelectedCell] = useState<Cell | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
-  const cellSize = getCellSize(cols)
-  const cells = generateGridCells()
+  const [cells, setCells] = useState<Cell[]>(() => generateGridCells(rows, cols))
+  useEffect(() => {
+    setCells(generateGridCells(rows, cols))
+  }, [rows, cols])
+
+  const [columnPage, setColumnPage] = useState(0)
+  const pageCount = Math.max(1, Math.ceil(cols / MAX_COLS_PER_PAGE))
+
+  useEffect(() => {
+    setColumnPage(currentPage => Math.min(currentPage, pageCount - 1))
+  }, [pageCount])
+
+  const isPaginated = cols > MAX_COLS_PER_PAGE
+  const startCol = isPaginated ? columnPage * MAX_COLS_PER_PAGE : 0
+  const endColExclusive = isPaginated
+    ? Math.min(cols, startCol + MAX_COLS_PER_PAGE)
+    : cols
+  const visibleCols = Math.max(1, endColExclusive - startCol)
+
+  const columnsRangeLabel = `Columns ${startCol + 1}-${endColExclusive} of ${cols}`
+  const pageLabel = `${columnPage + 1} / ${pageCount}`
+
+  const visibleCells = isPaginated
+    ? cells.filter(cell => cell.col >= startCol && cell.col < endColExclusive)
+    : cells
+
+  const cellSize = getCellSize(visibleCols)
 
   const openGridDialog = (cell: Cell) => {
     setSelectedCell(cell)
@@ -77,18 +104,49 @@ export function NicheGrids({
 
   return (
     <>
-      <div className="overflow-auto rounded-lg p-2 w-full h-full bg-secondary scrollbar-thin">
+      {isPaginated && (
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="text-sm text-muted-foreground">
+            {columnsRangeLabel}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => setColumnPage(page => Math.max(0, page - 1))}
+              disabled={columnPage === 0}
+              aria-label="Previous columns page"
+            >
+              Prev
+            </Button>
+            <div className="text-sm tabular-nums text-muted-foreground">
+              {pageLabel}
+            </div>
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => setColumnPage(page => Math.min(pageCount - 1, page + 1))}
+              disabled={columnPage >= pageCount - 1}
+              aria-label="Next columns page"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-y-auto overflow-x-hidden rounded-lg bg-secondary p-2 w-full">
         <div
           className="grid gap-1"
           style={{
-            gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-            width: cols > 10 ? `${cols * 32}px` : '100%',
+            gridTemplateColumns: `repeat(${visibleCols}, minmax(0, 1fr))`,
           }}
         >
-          {cells.map(cell => (
+          {visibleCells.map(cell => (
             <button
               key={`${cell.row}-${cell.col}`}
-              className={`relative flex cursor-pointer items-center justify-center rounded-sm border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none ${cellSize} ${getStatusStyle(cell.status)}`}
+              className={`relative flex aspect-square cursor-pointer items-center justify-center rounded-sm border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none ${cellSize} ${getStatusStyle(cell.status)}`}
               title={`Niche #${cell.number} - ${cell.status}`}
               onClick={() => openGridDialog(cell)}
             >
