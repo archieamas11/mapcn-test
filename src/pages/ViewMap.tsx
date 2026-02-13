@@ -32,7 +32,7 @@ function App() {
         >
           <MarkersLayer />
         </Map>
-        <div className="absolute top-2 right-2 z-10">
+        <div className="absolute bottom-2 right-2 z-10">
           <select
             value={style}
             onChange={e => setStyle(e.target.value as StyleKey)}

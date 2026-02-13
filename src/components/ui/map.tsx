@@ -2,6 +2,7 @@ import type { MarkerOptions, PopupOptions } from 'maplibre-gl'
 import type { ReactNode } from 'react'
 import { Loader2, Locate, Maximize, Minus, Pencil, Plus, RefreshCcw, X } from 'lucide-react'
 import MapLibreGL from 'maplibre-gl'
+import { MaplibreTerradrawControl } from '@watergis/maplibre-gl-terradraw'
 import {
   createContext,
   forwardRef,
@@ -19,8 +20,8 @@ import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 
 import 'maplibre-gl/dist/maplibre-gl.css'
+import '@watergis/maplibre-gl-terradraw/dist/maplibre-gl-terradraw.css'
 import { Toggle } from './toggle'
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuPositioner, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 
 // Check document class for theme (works with next-themes, etc.)
 function getDocumentTheme(): Theme | null {
@@ -843,11 +844,41 @@ function MapControls({
 }: MapControlsProps) {
   const { map, resetToInitial, setUserLocation } = useMap()
   const [waitingForLocation, setWaitingForLocation] = useState(false)
-  const [editMenuOpen, setEditMenuOpen] = useState(false)
+  const [isTerraDrawVisible, setIsTerraDrawVisible] = useState(false)
+  const terraDrawControlRef = useRef<MaplibreTerradrawControl | null>(null)
 
   const handleEditMarker = useCallback(() => {
-    setEditMenuOpen(true)
-  }, [])
+    if (!map)
+      return
+
+    if (!terraDrawControlRef.current) {
+      terraDrawControlRef.current = new MaplibreTerradrawControl({
+        open: true,
+      })
+    }
+
+    if (isTerraDrawVisible) {
+      map.removeControl(terraDrawControlRef.current)
+      setIsTerraDrawVisible(false)
+      return
+    }
+
+    map.addControl(terraDrawControlRef.current, 'top-right')
+    setIsTerraDrawVisible(true)
+  }, [map, isTerraDrawVisible])
+
+  useEffect(() => {
+    return () => {
+      if (!map || !terraDrawControlRef.current)
+        return
+      try {
+        map.removeControl(terraDrawControlRef.current)
+      }
+      catch {
+        // ignore
+      }
+    }
+  }, [map])
 
   const handleZoomIn = useCallback(() => {
     map?.zoomTo(map.getZoom() + 1, { duration: 300 })
@@ -973,22 +1004,13 @@ function MapControls({
         </ControlGroup> 
       )}
       {editMarker && (
-        <DropdownMenu open={editMenuOpen} onOpenChange={setEditMenuOpen}>
-          <DropdownMenuTrigger  className={cn('flex items-center justify-center size-8 hover:bg-accent dark:hover:bg-accent/40 transition-colors')} aria-label="Edit marker">
-            <ControlGroup>
-              <ControlButton onClick={handleEditMarker} label="Toggle edit marker menu">
-                <Pencil className="size-4" />
-              </ControlButton>
-            </ControlGroup> 
-          </DropdownMenuTrigger>
-          <DropdownMenuPositioner>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => console.log('Edit single marker')}>Edit Single Marker</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => console.log('Edit multiple markers')}>Edit Multiple Markers</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => console.log('Copy marker')}>Copy Marker</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenuPositioner>
-        </DropdownMenu>
+        <ControlGroup>
+          <ControlButton onClick={handleEditMarker} label="Toggle draw tools">
+            <Toggle aria-label='Toggle Edit Mode'>
+              <Pencil className={cn('size-4', isTerraDrawVisible && 'text-primary')} />
+            </Toggle>
+          </ControlButton>
+        </ControlGroup>
       )}
     </div>
   )
