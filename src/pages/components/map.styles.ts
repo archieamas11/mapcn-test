@@ -8,6 +8,7 @@ export const styles = {
       'arcgis-tiles': {
         type: 'raster' as const,
         tiles: [
+          // 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/58924/{z}/{y}/{x}',
         ],
         tileSize: 512,
