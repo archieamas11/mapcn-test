@@ -51,7 +51,7 @@ export interface Niche {
 }
 
 export interface LawnLot {
-  law_id: number
+  lawn_id: number
   plot_id: number
   unit_code: string
   block: string
