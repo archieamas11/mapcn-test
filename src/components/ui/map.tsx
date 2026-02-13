@@ -996,20 +996,16 @@ function MapControls({
       )}
       {use3D && (
         <ControlGroup>
-          <ControlButton onClick={handleToggle3D} label="Toggle 3D view">
-            <Toggle aria-label="Toggle 3D view">
+            <Toggle aria-label="Toggle 3D view" onClick={handleToggle3D}>
               3D    
             </Toggle>
-          </ControlButton>
         </ControlGroup> 
       )}
       {editMarker && (
         <ControlGroup>
-          <ControlButton onClick={handleEditMarker} label="Toggle draw tools">
-            <Toggle aria-label='Toggle Edit Mode'>
+            <Toggle onClick={handleEditMarker} aria-label='Toggle Edit Mode' >
               <Pencil className={cn('size-4', isTerraDrawVisible && 'text-primary')} />
             </Toggle>
-          </ControlButton>
         </ControlGroup>
       )}
     </div>
