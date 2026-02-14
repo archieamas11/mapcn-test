@@ -15,11 +15,13 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useNichesByPlotId, usePlotsGeoJson } from '@/hooks/use-plots'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { PLOT_CATEGORY } from '@/types/plot.types'
 import EditPlotDialog from './dialogs/EditPlotDialog'
-import { NicheGrids } from './NicheGrids'
+import { LawnDetails } from './LawnDetails'
+import { NicheDetails } from './NicheDetails'
 
 // ─── Map Layer Content ───────────────────────────────────────────────────────
 
@@ -266,6 +268,8 @@ const NORMALIZED_CLUSTER_LABELS: Record<string, string> = {
   B: 'Cluster B',
   C: 'Cluster C',
   D: 'Cluster D',
+  E: 'Cluster E',
+  F: 'Cluster F',
   SM: 'St. Michael',
   SG: 'St. Gabriel',
 }
@@ -294,12 +298,6 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
   const displayCluster = selectedPlot?.cluster ?? fallbackNiche?.cluster ?? null
   const normalizedClusterLabel = NORMALIZED_CLUSTER_LABELS[displayCluster ?? ''] ?? displayCluster
   const displayBay = selectedPlot?.bay ?? fallbackNiche?.bay ?? null
-  const nicheStatusCounts = nicheData?.summary ?? {
-    available: 0,
-    reserved: 0,
-    sold: 0,
-    hold: 0,
-  }
 
   const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
     useShallow(s => ({
@@ -385,12 +383,16 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
             <p className="font-semibold text-sm text-foreground leading-tight mb-8">
               {CATEGORY_DESCRIPTION[selectedPlot.category] ?? ''}
             </p>
-            <span className="flex items-center text-sm gap-1">
-              <Info size={16} />
-              <span className="flex gap-1">
-                {normalizedClusterLabel ? `${normalizedClusterLabel}${displayBay != null ? ` - Bay ${displayBay}` : ''}` : ''}
+            {selectedPlot.category !== 'lawn_lot' && (
+              <span className="flex items-center text-sm gap-1">
+                <Info size={16} />
+                <span className="flex gap-1">
+                  {isNicheCategory && isNichesLoading
+                    ? <Skeleton className="h-4 w-28 rounded-sm" />
+                    : (normalizedClusterLabel ? `${normalizedClusterLabel}${displayBay != null ? ` - Bay ${displayBay}` : ''}` : '')}
+                </span>
               </span>
-            </span>
+            )}
 
             {/* plot information buttons */}
             <div className="flex justify-evenly">
@@ -453,129 +455,18 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="bg-secondary p-2 rounded-3xl">
-          {isNicheCategory
+        {/* Stats & Details (moved to dedicated components) */}
+        {isNicheCategory
+          ? (
+              <NicheDetails plotId={selectedPlot.plot_id} selectedPlot={selectedPlot} />
+            )
+          : selectedPlot.category === PLOT_CATEGORY.LAWN
             ? (
-                <div className="grid grid-cols-3 divide-x divide-border text-center rounded-lg overflow-hidden">
-                  <div className="flex flex-col items-center py-2">
-                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Rows</span>
-                    <span className="text-lg font-bold text-foreground">{selectedPlot.niche_row ?? '—'}</span>
-                  </div>
-                  <div className="flex flex-col items-center py-2">
-                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Columns</span>
-                    <span className="text-lg font-bold text-foreground">{selectedPlot.niche_column ?? '—'}</span>
-                  </div>
-                  <div className="flex flex-col items-center py-2">
-                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Total</span>
-                    <span className="text-lg font-bold text-foreground">
-                      {selectedPlot.niche_row && selectedPlot.niche_column
-                        ? selectedPlot.niche_row * selectedPlot.niche_column
-                        : 'N/A'}
-                    </span>
-                  </div>
-                </div>
+                <LawnDetails selectedPlot={selectedPlot} />
               )
-            : selectedPlot.category === PLOT_CATEGORY.LAWN
-              ? (
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="space-y-0">
-                      <p className="text-xs text-muted-foreground">Width</p>
-                      <p className="text-lg font-semibold">
-                        {selectedPlot.width}
-                      </p>
-                    </div>
-                    <div className="space-y-0">
-                      <p className="text-xs text-muted-foreground">Length</p>
-                      <p className="text-lg font-semibold">
-                        {selectedPlot.length}
-                        m
-                      </p>
-                    </div>
-                    <div className="space-y-0">
-                      <p className="text-xs text-muted-foreground">Area</p>
-                      <p className="text-lg font-semibold">
-                        {selectedPlot.area}
-                        m²
-                      </p>
-                    </div>
-                  </div>
-                )
-              : null}
-        </div>
+            : null}
 
-        {/* Category-specific Details */}
-        {selectedPlot.category === PLOT_CATEGORY.LAWN && (
-          <div className="bg-secondary rounded-3xl p-5 w-full">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Plot Status */}
-              <div className="text-center space-y-2">
-                <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Status</div>
-                <div className="flex justify-center">
-                  <div
-                    className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center"
-                    aria-label="Plot Status"
-                    title="Plot Status"
-                  >
-                    <span className="text-xs capitalize leading-none">{selectedPlot.lawn_status}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-center space-y-2 border-l border-border">
-                {/* Plot category */}
-                <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Category</div>
-                <div className="flex justify-center">
-                  <span
-                    className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center"
-                  >
-                    <span className="text-xs capitalize font-bold">{selectedPlot.lawn_type}</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Niche grid display for columbarium / chambers */}
-        {isNicheCategory && (
-          <div className="space-y-2">
-            {selectedPlot.niche_row && selectedPlot.niche_column && (
-              <NicheGrids
-                rows={selectedPlot.niche_row}
-                cols={selectedPlot.niche_column}
-                niches={niches}
-                isLoading={isNichesLoading}
-              />
-            )}
-
-            <div className="grid grid-cols-4 gap-2 text-xs bg-secondary p-1 rounded-3xl justify-evenly">
-              <div className="flex justify-center items-center gap-1">
-                <div className="rounded-full bg-green-50 dark:bg-green-200 p-2">
-                  <div className="font-semibold">{nicheStatusCounts.available}</div>
-                </div>
-                <div className="text-green-600">Available</div>
-              </div>
-              <div className="flex justify-center items-center gap-1">
-                <div className="rounded-full bg-yellow-50 dark:bg-yellow-200 p-2">
-                  <div className="font-semibold">{nicheStatusCounts.reserved}</div>
-                </div>
-                <div className="text-yellow-600">Reserved</div>
-              </div>
-              <div className="flex justify-center items-center gap-1">
-                <div className="rounded-full bg-red-50 dark:bg-red-200 p-2">
-                  <div className="font-semibold">{nicheStatusCounts.sold}</div>
-                </div>
-                <div className="text-red-600">Sold</div>
-              </div>
-              <div className="flex justify-center items-center gap-1">
-                <div className="rounded-full bg-cyan-200 dark:bg-cyan-400 p-2">
-                  <div className="font-semibold">{nicheStatusCounts.hold}</div>
-                </div>
-                <div className="text-cyan-600">Hold</div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Niche/Lawn details moved to dedicated components above. */}
 
         {/* Unknown category fallback */}
         {![PLOT_CATEGORY.LAWN, PLOT_CATEGORY.COLUMBARIUM, PLOT_CATEGORY.CHAMBERS].includes(
@@ -598,6 +489,9 @@ interface MarkersLayerProps {
 
 export function MarkersLayer({ branchId }: MarkersLayerProps) {
   const [selectedPlot, setSelectedPlot] = useState<SelectedPlot | null>(null)
+  const { isLoading: isPlotsLoading, isFetching: isPlotsFetching } = usePlotsGeoJson(branchId)
+
+  const shouldShowPlotsSkeleton = branchId != null && (isPlotsLoading || isPlotsFetching)
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -619,6 +513,13 @@ export function MarkersLayer({ branchId }: MarkersLayerProps) {
         branchId={branchId}
       />
       <main className="relative">
+        {shouldShowPlotsSkeleton && (
+          <div className="pointer-events-none absolute inset-x-4 top-4 z-10 flex gap-2">
+            <Skeleton className="h-8 w-24 rounded-md" />
+            <Skeleton className="h-8 w-20 rounded-md" />
+            <Skeleton className="h-8 w-28 rounded-md" />
+          </div>
+        )}
         {selectedPlot && <SidebarTrigger />}
         <MapControls
           position="top-left"
