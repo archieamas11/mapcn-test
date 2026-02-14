@@ -86,6 +86,8 @@ function useResolvedTheme(themeProp?: 'light' | 'dark'): 'light' | 'dark' {
 interface MapContextValue {
   map: MapLibreGL.Map | null
   isLoaded: boolean
+  /** Whether the map is currently in 3D (pitch > 0) */
+  is3D: boolean
   /** Initial viewport captured when the map was initialized */
   initialViewport?: MapViewport
   /** Function to reset the map back to the initial viewport */
@@ -200,6 +202,7 @@ const Map = forwardRef<MapRef, MapProps>((
   const internalUpdateRef = useRef(false)
   const initialViewportRef = useRef<MapViewport | null>(null)
   const [userLocation, setUserLocation] = useState<{ longitude: number; latitude: number } | null>(null)
+  const [is3DMode, setIs3DMode] = useState(false)
   const resolvedTheme = useResolvedTheme(themeProp)
 
   const isControlled = viewport !== undefined && onViewportChange !== undefined
@@ -257,13 +260,19 @@ const Map = forwardRef<MapRef, MapProps>((
         }
       }, 100)
     }
-    const loadHandler = () => setIsLoaded(true)
+    const loadHandler = () => {
+      setIsLoaded(true)
+      // initialise 3D flag from the current map pitch
+      setIs3DMode(map.getPitch() > 0)
+    }
 
     // Viewport change handler - skip if triggered by internal update
     const handleMove = () => {
       if (internalUpdateRef.current)
         return
       onViewportChangeRef.current?.(getViewport(map))
+      // keep context's 3D flag in sync with the actual map pitch
+      setIs3DMode(map.getPitch() > 0)
     }
 
     map.on('load', loadHandler)
@@ -346,11 +355,12 @@ const Map = forwardRef<MapRef, MapProps>((
     () => ({
       map: mapInstance,
       isLoaded: isLoaded && isStyleLoaded,
+      is3D: is3DMode,
       initialViewport: initialViewportRef.current ?? undefined,
       resetToInitial,
       setUserLocation,
     }),
-    [mapInstance, isLoaded, isStyleLoaded, resetToInitial, setUserLocation],
+    [mapInstance, isLoaded, isStyleLoaded, is3DMode, resetToInitial, setUserLocation],
   )
 
   return (
@@ -842,7 +852,7 @@ function MapControls({
   className,
   onLocate,
 }: MapControlsProps) {
-  const { map, resetToInitial, setUserLocation } = useMap()
+  const { map, resetToInitial, setUserLocation, is3D } = useMap()
   const [waitingForLocation, setWaitingForLocation] = useState(false)
   const [isTerraDrawVisible, setIsTerraDrawVisible] = useState(false)
   const terraDrawControlRef = useRef<MaplibreTerradrawControl | null>(null)
@@ -996,10 +1006,16 @@ function MapControls({
       )}
       {use3D && (
         <ControlGroup>
-            <Toggle aria-label="Toggle 3D view" onClick={handleToggle3D}>
-              3D    
+            <Toggle
+              aria-label="Toggle 3D view"
+              pressed={is3D}
+              aria-pressed={is3D}
+              onPressedChange={() => handleToggle3D()}
+              onClick={handleToggle3D}
+            >
+              3D
             </Toggle>
-        </ControlGroup> 
+        </ControlGroup>
       )}
       {editMarker && (
         <ControlGroup>

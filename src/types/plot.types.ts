@@ -41,6 +41,7 @@ export interface ApiResponse<T> {
 
 export interface Plot {
   plot_id: number
+  branch_id: number
   category: PlotCategoryType
   niche_row: number | null
   niche_column: number | null
@@ -48,6 +49,7 @@ export interface Plot {
   lng: string | null
   lat: string | null
   isVisible: number
+  branch: string
   created_at: string
   updated_at: string
 }
@@ -79,6 +81,17 @@ export interface LawnLot {
   updated_at: string
 }
 
+export interface Branches {
+  branch_id: number
+  branch_name: string
+  address: string
+  lng: string
+  lat: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
 // ─── Joined API Row (lawn lot + plot) ────────────────────────────────────────
 
 export interface LawnLotWithPlot extends LawnLot {
@@ -97,6 +110,7 @@ export interface LawnLotWithPlot extends LawnLot {
 
 export interface PlotFeatureProperties {
   plot_id: number
+  branch_id: number
   category: PlotCategoryType
   image_url: string
   niche_row: number | null

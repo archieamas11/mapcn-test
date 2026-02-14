@@ -8,6 +8,16 @@ import './index.css'
 
 const queryClient = new QueryClient()
 
+declare global {
+  interface Window {
+    __TANSTACK_QUERY_CLIENT__:
+    import('@tanstack/react-query').QueryClient
+  }
+}
+
+// This code is for all users
+window.__TANSTACK_QUERY_CLIENT__ = queryClient
+
 scan({
   enabled: true,
 })

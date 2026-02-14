@@ -1,5 +1,6 @@
 import type {
   ApiResponse,
+  Branches,
   LawnLot,
   LawnLotWithPlot,
   Niche,
@@ -37,6 +38,14 @@ export async function fetchNichesByPlotId(plotId: number): Promise<Niche[]> {
   const { data } = await apiClient.get<ApiResponse<Niche[]>>(
     '/plots/get_plots.php',
     { params: { action: 'get_niches_by_plot_id', plot_id: plotId } },
+  )
+  return data.data
+}
+
+export async function fetchBranch(): Promise<Branches[]> {
+  const { data } = await apiClient.get<ApiResponse<Branches[]>>(
+    '/plots/get_plots.php',
+    { params: { action: 'get_branches' } },
   )
   return data.data
 }
@@ -80,6 +89,7 @@ export function buildPlotsGeoJson(
 
     const properties: PlotFeatureProperties = {
       plot_id: plot.plot_id,
+      branch_id: plot.branch_id,
       category: plot.category as PlotCategoryType,
       image_url: plot.image_url ?? DEFAULT_IMAGE_URL,
       niche_row: plot.niche_row,
