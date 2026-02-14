@@ -323,39 +323,47 @@ function FloatingSearchBar({ onSelectSearchResult }: FloatingSearchBarProps) {
               <div className="absolute top-full mt-2 w-full rounded-2xl border bg-background shadow-lg overflow-hidden">
                 {isSearching
                   ? (
-                      <p className="px-4 py-3 text-xs text-muted-foreground">Searching unit code...</p>
-                    )
+                    <p className="px-4 py-3 text-xs text-muted-foreground">Searching unit code...</p>
+                  )
                   : hasResults
                     ? (
-                        <ul className="max-h-72 overflow-y-auto">
-                          {searchResults.map(result => (
-                            <li key={`${result.source_type}-${result.plot_id}-${result.unit_code ?? 'unknown'}-${result.niche_number ?? '0'}`}>
-                              <button
-                                type="button"
-                                className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors cursor-pointer"
-                                onClick={() => onSelectSearchResult(result)}
-                              >
-                                <div className="flex items-center justify-between gap-2">
+                      <ul className="max-h-72 overflow-y-auto">
+                        {searchResults.map(result => (
+                          <li key={`${result.source_type}-${result.plot_id}-${result.unit_code ?? 'unknown'}-${result.niche_number ?? '0'}`}>
+                            <button
+                              type="button"
+                              className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors cursor-pointer"
+                              onClick={() => onSelectSearchResult(result)}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div>
                                   <span className="font-medium text-sm">{result.unit_code ?? 'No Unit Code'}</span>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {result.category === PLOT_CATEGORY.LAWN
+                                      ? `Block ${result.block ?? 'N/A'}`
+                                      : `Niche #${result.niche_number ?? 'N/A'}`}
+                                  </p>
+                                </div>
+                                <div className='flex flex-col'>
                                   <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                                     {CATEGORY_LABEL[result.category] ?? result.category}
                                   </span>
+                                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                    {result.branch_name ?? 'N/A'}
+                                  </span>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {result.category === PLOT_CATEGORY.LAWN
-                                    ? `Block ${result.block ?? 'N/A'}`
-                                    : `Niche #${result.niche_number ?? 'N/A'}`}
-                                </p>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )
+                              </div>
+
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )
                     : (
-                        <p className="px-4 py-3 text-xs text-muted-foreground">
-                          No matching unit code found.
-                        </p>
-                      )}
+                      <p className="px-4 py-3 text-xs text-muted-foreground">
+                        No matching unit code found.
+                      </p>
+                    )}
               </div>
             )}
           </div>
@@ -387,7 +395,7 @@ function SidebarContentComponent({
   // Fetch niches for chambers/columbarium plots
   const isNicheCategory
     = selectedPlot?.category === PLOT_CATEGORY.CHAMBERS
-      || selectedPlot?.category === PLOT_CATEGORY.COLUMBARIUM
+    || selectedPlot?.category === PLOT_CATEGORY.COLUMBARIUM
 
   const { data: nicheData, isLoading: isNichesLoading } = useNichesByPlotId(
     isNicheCategory ? selectedPlot?.plot_id : null,
@@ -482,43 +490,52 @@ function SidebarContentComponent({
               <div className="absolute top-full mt-2 w-full rounded-2xl border bg-background shadow-lg overflow-hidden z-20">
                 {isSearching
                   ? (
-                      <p className="px-4 py-3 text-xs text-muted-foreground">Searching unit code...</p>
-                    )
+                    <p className="px-4 py-3 text-xs text-muted-foreground">Searching unit code...</p>
+                  )
                   : hasResults
                     ? (
-                        <ul className="max-h-72 overflow-y-auto">
-                          {searchResults.map(result => (
-                            <li key={`${result.source_type}-${result.plot_id}-${result.unit_code ?? 'unknown'}-${result.niche_number ?? '0'}`}>
-                              <button
-                                type="button"
-                                className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors cursor-pointer"
-                                onClick={() => {
-                                  onSelectSearchResult(result)
-                                  setSearchTerm('')
-                                  setDebouncedSearchTerm('')
-                                }}
-                              >
-                                <div className="flex items-center justify-between gap-2">
+                      <ul className="max-h-72 overflow-y-auto">
+                        {searchResults.map(result => (
+                          <li key={`${result.source_type}-${result.plot_id}-${result.unit_code ?? 'unknown'}-${result.niche_number ?? '0'}`}>
+                            <button
+                              type="button"
+                              className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors cursor-pointer"
+                              onClick={() => {
+                                onSelectSearchResult(result)
+                                setSearchTerm('')
+                                setDebouncedSearchTerm('')
+                              }}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div>
                                   <span className="font-medium text-sm">{result.unit_code ?? 'No Unit Code'}</span>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {result.category === PLOT_CATEGORY.LAWN
+                                      ? `Block ${result.block ?? 'N/A'}`
+                                      : `Niche #${result.niche_number ?? 'N/A'}`}
+                                  </p>
+                                </div>
+                                <div className="flex flex-col gap-2">
                                   <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                                     {CATEGORY_LABEL[result.category] ?? result.category}
                                   </span>
+                                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                    Branch:
+                                    {' '}
+                                    {result.branch_name ?? 'N/A'}
+                                  </span>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {result.category === PLOT_CATEGORY.LAWN
-                                    ? `Block ${result.block ?? 'N/A'}`
-                                    : `Niche #${result.niche_number ?? 'N/A'}`}
-                                </p>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )
+                              </div>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )
                     : (
-                        <p className="px-4 py-3 text-xs text-muted-foreground">
-                          No matching unit code found.
-                        </p>
-                      )}
+                      <p className="px-4 py-3 text-xs text-muted-foreground">
+                        No matching unit code found.
+                      </p>
+                    )}
               </div>
             )}
           </div>
@@ -625,17 +642,17 @@ function SidebarContentComponent({
         {/* Stats & Details (moved to dedicated components) */}
         {isNicheCategory
           ? (
-              <NicheDetails
-                selectedPlot={selectedPlot}
-                nicheData={nicheData}
-                isNichesLoading={isNichesLoading}
-                highlightedUnitCode={highlightedUnitCode}
-              />
-            )
+            <NicheDetails
+              selectedPlot={selectedPlot}
+              nicheData={nicheData}
+              isNichesLoading={isNichesLoading}
+              highlightedUnitCode={highlightedUnitCode}
+            />
+          )
           : selectedPlot.category === PLOT_CATEGORY.LAWN
             ? (
-                <LawnDetails selectedPlot={selectedPlot} />
-              )
+              <LawnDetails selectedPlot={selectedPlot} />
+            )
             : null}
 
         {/* Niche/Lawn details moved to dedicated components above. */}
@@ -644,10 +661,10 @@ function SidebarContentComponent({
         {![PLOT_CATEGORY.LAWN, PLOT_CATEGORY.COLUMBARIUM, PLOT_CATEGORY.CHAMBERS].includes(
           selectedPlot.category,
         ) && (
-          <p className="text-sm text-gray-500 italic">
-            No additional info available.
-          </p>
-        )}
+            <p className="text-sm text-gray-500 italic">
+              No additional info available.
+            </p>
+          )}
       </div>
     </div>
   )
@@ -692,7 +709,7 @@ export function MarkersLayer({ branchId }: MarkersLayerProps) {
 
     const shouldHighlightNiche
       = isNicheCategory(selectedFromSearch.category)
-        && (result.unit_code?.trim().length ?? 0) > 0
+      && (result.unit_code?.trim().length ?? 0) > 0
 
     handleSelectPlot(selectedFromSearch, {
       highlightedUnitCode: shouldHighlightNiche ? result.unit_code : null,

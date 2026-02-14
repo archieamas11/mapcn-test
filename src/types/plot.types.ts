@@ -83,6 +83,7 @@ export interface UnitSearchResult {
   source_type: 'niche' | 'lawn_lot'
   plot_id: number
   branch_id: number
+  branch_name: string | null
   category: PlotCategoryType
   image_url: string | null
   lng: number | null
