@@ -1,5 +1,5 @@
 import type { Niche, PlotStatusType } from '@/types/plot.types'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -43,7 +43,7 @@ export function NicheGrids({ rows: _rows, cols, niches, isLoading }: NicheGridsP
   const [selectedCell, setSelectedCell] = useState<NicheCell | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
-  const cells = mapNichesToCells(niches, cols)
+  const cells = useMemo(() => mapNichesToCells(niches, cols), [niches, cols])
 
   const [columnPage, setColumnPage] = useState(0)
   const pageCount = Math.max(1, Math.ceil(cols / MAX_COLS_PER_PAGE))
@@ -51,7 +51,7 @@ export function NicheGrids({ rows: _rows, cols, niches, isLoading }: NicheGridsP
   // Reset to page 1 when cols or niches change
   useEffect(() => {
     setColumnPage(0)
-  }, [cols, niches])
+  }, [cols, niches.length])
 
   const isPaginated = cols > MAX_COLS_PER_PAGE
   const startCol = isPaginated ? columnPage * MAX_COLS_PER_PAGE : 0
@@ -63,9 +63,12 @@ export function NicheGrids({ rows: _rows, cols, niches, isLoading }: NicheGridsP
   const columnsRangeLabel = `Columns ${startCol + 1}-${endColExclusive} of ${cols}`
   const pageLabel = `${columnPage + 1} / ${pageCount}`
 
-  const visibleCells = isPaginated
-    ? cells.filter(cell => cell.col >= startCol && cell.col < endColExclusive)
-    : cells
+  const visibleCells = useMemo(
+    () => (isPaginated
+      ? cells.filter(cell => cell.col >= startCol && cell.col < endColExclusive)
+      : cells),
+    [isPaginated, cells, startCol, endColExclusive],
+  )
 
   const openGridDialog = (cell: NicheCell) => {
     setSelectedCell(cell)

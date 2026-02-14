@@ -53,6 +53,16 @@ export function LawnDetails({ selectedPlot }: LawnDetailsProps) {
               </span>
             </div>
           </div>
+
+    
+          <div className="text-center space-y-2 border-l border-border">
+            <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Unit Code</div>
+            <div className="flex justify-center">
+              <span className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center">
+                <span className="text-xs capitalize font-bold">{selectedPlot.unit_code ?? '—'}</span>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </>

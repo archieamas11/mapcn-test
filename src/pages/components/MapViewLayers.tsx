@@ -458,7 +458,11 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
         {/* Stats & Details (moved to dedicated components) */}
         {isNicheCategory
           ? (
-              <NicheDetails plotId={selectedPlot.plot_id} selectedPlot={selectedPlot} />
+              <NicheDetails
+                selectedPlot={selectedPlot}
+                nicheData={nicheData}
+                isNichesLoading={isNichesLoading}
+              />
             )
           : selectedPlot.category === PLOT_CATEGORY.LAWN
             ? (
@@ -490,6 +494,23 @@ interface MarkersLayerProps {
 export function MarkersLayer({ branchId }: MarkersLayerProps) {
   const [selectedPlot, setSelectedPlot] = useState<SelectedPlot | null>(null)
   const { isLoading: isPlotsLoading, isFetching: isPlotsFetching } = usePlotsGeoJson(branchId)
+  const previousBranchIdRef = useRef<number | null>(branchId)
+  const { setOpen, setOpenMobile } = useSidebarStore(
+    useShallow(s => ({
+      setOpen: s.setOpen,
+      setOpenMobile: s.setOpenMobile,
+    })),
+  )
+
+  useEffect(() => {
+    if (previousBranchIdRef.current === branchId)
+      return
+
+    previousBranchIdRef.current = branchId
+    setSelectedPlot(null)
+    setOpen(false)
+    setOpenMobile(false)
+  }, [branchId, setOpen, setOpenMobile])
 
   const shouldShowPlotsSkeleton = branchId != null && (isPlotsLoading || isPlotsFetching)
 

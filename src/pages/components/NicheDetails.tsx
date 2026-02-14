@@ -1,16 +1,15 @@
 import type { SelectedPlot } from '@/types/plot.types'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useNichesByPlotId } from '@/hooks/use-plots'
+import type { NicheResponse } from '@/types/plot.types'
 import { NicheGrids } from './NicheGrids'
 
 interface NicheDetailsProps {
-  plotId: number | null
   selectedPlot: SelectedPlot
+  nicheData?: NicheResponse
+  isNichesLoading: boolean
 }
 
-export function NicheDetails({ plotId, selectedPlot }: NicheDetailsProps) {
-  const { data: nicheData, isLoading: isNichesLoading } = useNichesByPlotId(plotId)
-
+export function NicheDetails({ selectedPlot, nicheData, isNichesLoading }: NicheDetailsProps) {
   const niches = nicheData?.niches ?? []
   const nicheStatusCounts = nicheData?.summary ?? {
     available: 0,
