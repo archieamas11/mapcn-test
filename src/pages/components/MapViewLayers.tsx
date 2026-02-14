@@ -371,10 +371,18 @@ interface SidebarContentComponentProps {
   selectedPlot: SelectedPlot | null
   setSelectedPlot: (plot: SelectedPlot | null) => void
   highlightedUnitCode: string | null
+  onSelectSearchResult: (result: UnitSearchResult) => void
 }
 
-function SidebarContentComponent({ selectedPlot, setSelectedPlot, highlightedUnitCode }: SidebarContentComponentProps) {
+function SidebarContentComponent({
+  selectedPlot,
+  setSelectedPlot,
+  highlightedUnitCode,
+  onSelectSearchResult,
+}: SidebarContentComponentProps) {
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
 
   // Fetch niches for chambers/columbarium plots
   const isNicheCategory
@@ -398,8 +406,21 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot, highlightedUni
       isMobile: s.isMobile,
     })),
   )
+  const { data: searchResults = [], isFetching: isSearching } = useUnitCodeSearch(debouncedSearchTerm)
+  const hasSearchTerm = debouncedSearchTerm.trim().length > 0
+  const hasResults = searchResults.length > 0
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 250)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [searchTerm])
 
   const handleClear = () => {
+    setSearchTerm('')
+    setDebouncedSearchTerm('')
     if (isMobile) {
       setOpenMobile(false)
     }
@@ -431,6 +452,7 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot, highlightedUni
           role="search"
           aria-label="Admin lot search"
           transition={{ duration: 0.2, ease: 'easeInOut' }}
+          onSubmit={e => e.preventDefault()}
         >
           <div className="relative flex-1">
             <Input
@@ -439,6 +461,8 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot, highlightedUni
               aria-label="Search lot"
               autoComplete="off"
               name="search"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
             />
             <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5">
               <SearchIcon size={20} />
@@ -452,6 +476,50 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot, highlightedUni
               >
                 <X size={20} aria-hidden="true" />
               </button>
+            )}
+
+            {hasSearchTerm && (
+              <div className="absolute top-full mt-2 w-full rounded-2xl border bg-background shadow-lg overflow-hidden z-20">
+                {isSearching
+                  ? (
+                      <p className="px-4 py-3 text-xs text-muted-foreground">Searching unit code...</p>
+                    )
+                  : hasResults
+                    ? (
+                        <ul className="max-h-72 overflow-y-auto">
+                          {searchResults.map(result => (
+                            <li key={`${result.source_type}-${result.plot_id}-${result.unit_code ?? 'unknown'}-${result.niche_number ?? '0'}`}>
+                              <button
+                                type="button"
+                                className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors cursor-pointer"
+                                onClick={() => {
+                                  onSelectSearchResult(result)
+                                  setSearchTerm('')
+                                  setDebouncedSearchTerm('')
+                                }}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-medium text-sm">{result.unit_code ?? 'No Unit Code'}</span>
+                                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                    {CATEGORY_LABEL[result.category] ?? result.category}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {result.category === PLOT_CATEGORY.LAWN
+                                    ? `Block ${result.block ?? 'N/A'}`
+                                    : `Niche #${result.niche_number ?? 'N/A'}`}
+                                </p>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )
+                    : (
+                        <p className="px-4 py-3 text-xs text-muted-foreground">
+                          No matching unit code found.
+                        </p>
+                      )}
+              </div>
             )}
           </div>
         </motion.form>
@@ -660,6 +728,7 @@ export function MarkersLayer({ branchId }: MarkersLayerProps) {
               selectedPlot={selectedPlot}
               setSelectedPlot={setSelectedPlot}
               highlightedUnitCode={highlightedUnitCode}
+              onSelectSearchResult={handleSelectSearchResult}
             />
           </SidebarContent>
         </Sidebar>
