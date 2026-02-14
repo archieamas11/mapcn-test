@@ -1,57 +1,57 @@
+import type { Niche, PlotStatusType } from '@/types/plot.types'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import { getStatusStyle } from '@/utils/status-style'
 import GridDialog from './dialogs/GridDialog'
 
 const MAX_COLS_PER_PAGE = 10
 
-interface Cell {
+interface NicheCell {
   row: number
   col: number
-  status: string
+  status: PlotStatusType
   number: number
+  niche_id: number
+  unit_code: string | null
 }
 
-function generateGridCells(rows: number, cols: number) {
-  const cells: Cell[] = []
-  const statuses = ['available', 'sold', 'reserved', 'hold'] as const
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const randomStatus = statuses[Math.floor(Math.random() * statuses.length)]
-      cells.push({
-        row: r,
-        col: c,
-        status: randomStatus,
-        number: r * cols + c + 1,
-      })
-    }
-  }
-
-  return cells
+/**
+ * Maps raw Niche records into grid-positioned cells
+ * using niche_number to derive row/col placements.
+ */
+function mapNichesToCells(niches: Niche[], cols: number): NicheCell[] {
+  return niches.map(niche => ({
+    niche_id: niche.niche_id,
+    number: niche.niche_number,
+    status: niche.niche_status,
+    row: Math.floor((niche.niche_number - 1) / cols),
+    col: (niche.niche_number - 1) % cols,
+    unit_code: niche.unit_code,
+  }))
 }
 
-export function NicheGrids({
-  rows,
-  cols,
-}: {
+interface NicheGridsProps {
   rows: number
   cols: number
-}) {
-  const [selectedCell, setSelectedCell] = useState<Cell | null>(null)
+  niches: Niche[]
+  isLoading: boolean
+}
+
+export function NicheGrids({ rows: _rows, cols, niches, isLoading }: NicheGridsProps) {
+  const [selectedCell, setSelectedCell] = useState<NicheCell | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
-  const [cells, setCells] = useState<Cell[]>(() => generateGridCells(rows, cols))
-  useEffect(() => {
-    setCells(generateGridCells(rows, cols))
-  }, [rows, cols])
+  const cells = mapNichesToCells(niches, cols)
 
   const [columnPage, setColumnPage] = useState(0)
   const pageCount = Math.max(1, Math.ceil(cols / MAX_COLS_PER_PAGE))
 
+  // Reset to page 1 when cols or niches change
   useEffect(() => {
-    setColumnPage(currentPage => Math.min(currentPage, pageCount - 1))
-  }, [pageCount])
+    setColumnPage(0)
+  }, [cols, niches])
 
   const isPaginated = cols > MAX_COLS_PER_PAGE
   const startCol = isPaginated ? columnPage * MAX_COLS_PER_PAGE : 0
@@ -67,13 +67,29 @@ export function NicheGrids({
     ? cells.filter(cell => cell.col >= startCol && cell.col < endColExclusive)
     : cells
 
-  const openGridDialog = (cell: Cell) => {
+  const openGridDialog = (cell: NicheCell) => {
     setSelectedCell(cell)
     setIsOpen(true)
   }
   const closeGridDialog = () => {
     setIsOpen(false)
     setSelectedCell(null)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-4">
+        <Skeleton className="h-40 w-full rounded-lg" />
+      </div>
+    )
+  }
+
+  if (cells.length === 0) {
+    return (
+      <div className="text-center text-sm text-muted-foreground py-4">
+        No niches found for this plot.
+      </div>
+    )
   }
 
   return (
@@ -110,7 +126,7 @@ export function NicheGrids({
         </div>
       )}
 
-      <div className="overflow-hidden flex justify-center items-center">
+      <div className="flex justify-center items-center">
         <div
           className="grid gap-1"
           style={{
@@ -119,12 +135,17 @@ export function NicheGrids({
         >
           {visibleCells.map(cell => (
             <button
-              key={`${cell.row}-${cell.col}`}
-              className={`flex cursor-pointer items-center justify-center rounded-lg border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none w-8 h-8 ${getStatusStyle(cell.status)}`}
+              key={cell.niche_id}
+              className={cn(
+                `flex cursor-pointer items-center justify-center rounded-lg border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none w-8 h-8 ${getStatusStyle(cell.status)}`,
+                cell.status === 'not_available' ? 'opacity-50 hover:scale-100 hover:shadow-none' : '',
+              )}
               title={`Niche #${cell.number} - ${cell.status}`}
               onClick={() => openGridDialog(cell)}
             >
-              <span className="text-[15px]">{cell.number}</span>
+              <span className="text-[15px]">
+                {cell.status === 'not_available' ? '✕' : cell.number}
+              </span>
             </button>
           ))}
         </div>

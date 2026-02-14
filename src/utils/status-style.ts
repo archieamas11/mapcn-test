@@ -8,6 +8,8 @@ export function getStatusStyle(status: string) {
       return 'bg-yellow-400 border-yellow-600 text-yellow-900 hover:bg-yellow-500'
     case 'hold':
       return 'bg-cyan-400 border-cyan-600 text-cyan-900 hover:bg-cyan-500'
+    case 'not_available':
+      return 'bg-gray-400 border-gray-600 text-gray-900 hover:bg-gray-500'
     default:
       return 'bg-gray-300 border-gray-500'
   }

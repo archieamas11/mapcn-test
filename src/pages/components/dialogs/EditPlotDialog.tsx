@@ -1,28 +1,14 @@
+import type { SelectedPlot } from '@/types/plot.types'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
-interface SelectedPoint {
-  id: number
-  name: string
-  category: string
-  coordinates: [number, number]
-  lawn_type?: string
-  image: string
-  status?: string
-  width?: number
-  length?: number
-  area?: number
-  rows?: number
-  columns?: number
-}
-
 export default function EditPlotDialog({
   isOpen,
-  selectedPoint,
+  selectedPlot,
   onClose,
 }: {
   isOpen: boolean
-  selectedPoint: SelectedPoint | null
+  selectedPlot: SelectedPlot | null
   onClose: () => void
 }) {
   return (
@@ -37,18 +23,17 @@ export default function EditPlotDialog({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Edit Plot:
-              {' '}
-              {selectedPoint?.name}
+              Edit Plot #
+              {selectedPlot?.plot_id}
             </DialogTitle>
             <DialogDescription>
               Category:
               {' '}
-              <span className="font-medium">{selectedPoint?.category}</span>
+              <span className="font-medium">{selectedPlot?.category}</span>
               <br />
               Status:
               {' '}
-              <span className="font-medium">{selectedPoint?.status}</span>
+              <span className="font-medium">{selectedPlot?.lawn_status ?? 'N/A'}</span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

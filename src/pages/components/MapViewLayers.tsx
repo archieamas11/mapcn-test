@@ -1,4 +1,5 @@
 /* eslint-disable no-alert */
+import type { SelectedPlot } from '@/types/plot.types'
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import { ExternalLink, MapPin, Navigation, Pencil, PrinterIcon, SearchIcon, X } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
@@ -15,95 +16,27 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useNichesByPlotId, usePlotsGeoJson } from '@/hooks/use-plots'
 import { useSidebarStore } from '@/stores/sidebar-store'
+import { PLOT_CATEGORY } from '@/types/plot.types'
 import EditPlotDialog from './dialogs/EditPlotDialog'
 import { NicheGrids } from './NicheGrids'
 
-// Generate random points around Finisterre Gardenz
-function generateRandomPoints(count: number) {
-  const center = { lng: 123.798102525943648, lat: 10.24864620598991 }
-  const features = []
-
-  for (let i = 0; i < count; i++) {
-    const metersToDegrees = 1 / 111320
-    const offsetLng = (Math.random() - 0.5) * 20 * metersToDegrees
-    const offsetLat = (Math.random() - 0.5) * 20 * metersToDegrees
-    const lng = center.lng + offsetLng
-    const lat = center.lat + offsetLat
-    const categories = ['chambers', 'lawn_lot', 'columbarium']
-    const category = categories[Math.floor(Math.random() * categories.length)]
-    const properties: any = {
-      id: i,
-      name: `Location ${i + 1}`,
-      category,
-    }
-
-    const status = ['available', 'sold', 'reserved', 'hold', 'not_available'][
-      Math.floor(Math.random() * 5)
-    ]
-    properties.status = status
-
-    const law_type = ['bronze', 'diamond', 'platinum', 'silver'][
-      Math.floor(Math.random() * 4)
-    ]
-    properties.law_type = law_type
-
-    if (category === 'lawn_lot') {
-      properties.width = Math.floor(Math.random() * 100) + 10
-      properties.length = Math.floor(Math.random() * 100) + 10
-      properties.area = properties.width * properties.length
-    }
-
-    if (category === 'chambers' || category === 'columbarium') {
-      properties.rows = Math.floor(Math.random() * 10) + 1
-      properties.columns = Math.floor(Math.random() * 20) + 1
-    }
-
-    features.push({
-      type: 'Feature' as const,
-      properties,
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [lng, lat],
-      },
-    })
-  }
-
-  return {
-    type: 'FeatureCollection' as const,
-    features,
-  }
-}
-
-// 200 markers - would be slow with DOM markers, but fast with layers
-const pointsData = generateRandomPoints(200)
-
-interface SelectedPoint {
-  id: number
-  name: string
-  category: string
-  coordinates: [number, number]
-  lawn_type?: string
-  image: string
-  status?: string
-  width?: number
-  length?: number
-  area?: number
-  rows?: number
-  columns?: number
-}
+// ─── Map Layer Content ───────────────────────────────────────────────────────
 
 interface MarkersLayerContentProps {
-  selectedPoint: SelectedPoint | null
-  setSelectedPoint: (point: SelectedPoint | null) => void
+  selectedPlot: SelectedPlot | null
+  setSelectedPlot: (plot: SelectedPlot | null) => void
 }
 
-function MarkersLayerContent({ selectedPoint, setSelectedPoint }: MarkersLayerContentProps) {
+function MarkersLayerContent({ selectedPlot, setSelectedPlot }: MarkersLayerContentProps) {
   const { map, isLoaded } = useMap()
   const id = useId()
   const sourceId = `markers-source-${id}`
   const layerId = `markers-layer-${id}`
   const mapPinMarkerRef = useRef<maplibregl.Marker | null>(null)
+
+  const { data: geoJson } = usePlotsGeoJson()
 
   const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
     useShallow(s => ({
@@ -112,13 +45,15 @@ function MarkersLayerContent({ selectedPoint, setSelectedPoint }: MarkersLayerCo
       isMobile: s.isMobile,
     })),
   )
+
+  // Add / update the GeoJSON source & circle layer
   useEffect(() => {
-    if (!map || !isLoaded)
+    if (!map || !isLoaded || !geoJson)
       return
 
     map.addSource(sourceId, {
       type: 'geojson',
-      data: pointsData,
+      data: geoJson,
     })
 
     map.addLayer({
@@ -129,11 +64,11 @@ function MarkersLayerContent({ selectedPoint, setSelectedPoint }: MarkersLayerCo
         'circle-radius': 6,
         'circle-color': [
           'case',
-          ['in', ['get', 'category'], ['literal', ['chambers', 'columbarium']]],
+          ['in', ['get', 'category'], ['literal', [PLOT_CATEGORY.CHAMBERS, PLOT_CATEGORY.COLUMBARIUM]]],
           '#9ca3af',
           [
             'match',
-            ['get', 'status'],
+            ['get', 'lawn_status'],
             'available',
             '#10b981',
             'sold',
@@ -161,31 +96,23 @@ function MarkersLayerContent({ selectedPoint, setSelectedPoint }: MarkersLayerCo
         return
 
       const feature = e.features[0]
-      const coords = (feature.geometry as GeoJSON.Point).coordinates as [
-        number,
-        number,
-      ]
+      const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number]
+      const props = feature.properties as Record<string, string | number | null>
 
-      const images = [
-        'https://images.unsplash.com/photo-1575223970966-76ae61ee7838?w=300&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1496588152823-86ff7695e68f?w=300&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1534430480872-3498386e7856?w=300&h=200&fit=crop',
-      ]
-      const randomImage = images[Math.floor(Math.random() * images.length)]
-
-      setSelectedPoint({
-        id: feature.properties?.id,
-        name: feature.properties?.name,
-        category: feature.properties?.category,
-        image: randomImage,
+      setSelectedPlot({
+        plot_id: Number(props.plot_id),
+        category: props.category as SelectedPlot['category'],
         coordinates: coords,
-        lawn_type: feature.properties?.law_type,
-        status: feature.properties?.status,
-        width: feature.properties?.width,
-        length: feature.properties?.length,
-        area: feature.properties?.area,
-        rows: feature.properties?.rows,
-        columns: feature.properties?.columns,
+        image_url: String(props.image_url ?? ''),
+        niche_row: props.niche_row != null ? Number(props.niche_row) : null,
+        niche_column: props.niche_column != null ? Number(props.niche_column) : null,
+        lawn_status: (props.lawn_status as SelectedPlot['lawn_status']) ?? null,
+        lawn_type: (props.lawn_type as SelectedPlot['lawn_type']) ?? null,
+        width: props.width != null ? Number(props.width) : null,
+        length: props.length != null ? Number(props.length) : null,
+        area: props.area != null ? Number(props.area) : null,
+        unit_code: props.unit_code != null ? String(props.unit_code) : null,
+        block: props.block != null ? String(props.block) : null,
       })
 
       map.flyTo({
@@ -230,8 +157,9 @@ function MarkersLayerContent({ selectedPoint, setSelectedPoint }: MarkersLayerCo
         // ignore cleanup errors
       }
     }
-  }, [map, isLoaded, sourceId, layerId, isMobile, setOpen, setOpenMobile, setSelectedPoint])
+  }, [map, isLoaded, geoJson, sourceId, layerId, isMobile, setOpen, setOpenMobile, setSelectedPlot])
 
+  // Selected marker pin overlay
   useEffect(() => {
     if (!map || !isLoaded)
       return
@@ -241,8 +169,8 @@ function MarkersLayerContent({ selectedPoint, setSelectedPoint }: MarkersLayerCo
       mapPinMarkerRef.current = null
     }
 
-    if (selectedPoint) {
-      map.setFilter(layerId, ['!=', ['get', 'id'], selectedPoint.id])
+    if (selectedPlot) {
+      map.setFilter(layerId, ['!=', ['get', 'plot_id'], selectedPlot.plot_id])
 
       const el = document.createElement('div')
       el.innerHTML = renderToString(
@@ -254,7 +182,7 @@ function MarkersLayerContent({ selectedPoint, setSelectedPoint }: MarkersLayerCo
       el.style.cursor = 'pointer'
 
       const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat(selectedPoint.coordinates)
+        .setLngLat(selectedPlot.coordinates)
         .addTo(map)
 
       mapPinMarkerRef.current = marker
@@ -269,10 +197,12 @@ function MarkersLayerContent({ selectedPoint, setSelectedPoint }: MarkersLayerCo
         mapPinMarkerRef.current = null
       }
     }
-  }, [map, isLoaded, selectedPoint, layerId])
+  }, [map, isLoaded, selectedPlot, layerId])
 
   return null
 }
+
+// ─── Floating Search Bar ─────────────────────────────────────────────────────
 
 function FloatingSearchBar() {
   const { open, openMobile, isMobile } = useSidebarStore(
@@ -315,23 +245,47 @@ function FloatingSearchBar() {
   )
 }
 
-interface SidebarContentComponentProps {
-  selectedPoint: SelectedPoint | null
-  setSelectedPoint: (point: SelectedPoint | null) => void
+// ─── Category Labels ─────────────────────────────────────────────────────────
+
+const CATEGORY_LABEL: Record<string, string> = {
+  [PLOT_CATEGORY.CHAMBERS]: 'Memorial Chambers',
+  [PLOT_CATEGORY.COLUMBARIUM]: 'Columbarium',
+  [PLOT_CATEGORY.LAWN]: 'Lawn Lot',
 }
 
-function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarContentComponentProps) {
+const CATEGORY_DESCRIPTION: Record<string, string> = {
+  [PLOT_CATEGORY.CHAMBERS]: 'A dignified memorial chamber with individual niches for placement and remembrance.',
+  [PLOT_CATEGORY.COLUMBARIUM]: 'A peaceful columbarium with organized niches for eternal rest and peaceful remembrance.',
+  [PLOT_CATEGORY.LAWN]: 'A serene lawn lot perfect for gatherings, ceremonies, and peaceful moments of reflection.',
+}
+
+// ─── Sidebar Content ─────────────────────────────────────────────────────────
+
+interface SidebarContentComponentProps {
+  selectedPlot: SelectedPlot | null
+  setSelectedPlot: (plot: SelectedPlot | null) => void
+}
+
+function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarContentComponentProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
 
+  // Fetch niches for chambers/columbarium plots
+  const isNicheCategory
+    = selectedPlot?.category === PLOT_CATEGORY.CHAMBERS
+      || selectedPlot?.category === PLOT_CATEGORY.COLUMBARIUM
+
+  const { data: niches = [], isLoading: isNichesLoading } = useNichesByPlotId(
+    isNicheCategory ? selectedPlot?.plot_id : null,
+  )
+
   useEffect(() => {
     setImageLoaded(false)
-    // Check if the image is already cached/loaded
     if (imgRef.current?.complete) {
       setImageLoaded(true)
     }
-  }, [selectedPoint])
+  }, [selectedPlot])
 
   const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
     useShallow(s => ({
@@ -348,19 +302,27 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
     else {
       setOpen(false)
     }
-    setSelectedPoint(null)
+    setSelectedPlot(null)
   }
 
   const handleEditPlot = () => {
     setIsEditOpen(true)
   }
 
-  if (!selectedPoint) {
+  if (!selectedPlot) {
     return (
       <div className="p-4 text-center text-muted-foreground">
         <p>Select a marker on the map to view details</p>
       </div>
     )
+  }
+
+  // Niche status counts for the summary bar
+  const nicheStatusCounts = {
+    available: niches.filter(n => n.niche_status === 'available').length,
+    reserved: niches.filter(n => n.niche_status === 'reserved').length,
+    sold: niches.filter(n => n.niche_status === 'sold').length,
+    hold: niches.filter(n => n.niche_status === 'hold').length,
   }
 
   return (
@@ -385,7 +347,7 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
             <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5">
               <SearchIcon size={20} />
             </div>
-            {selectedPoint && (
+            {selectedPlot && (
               <button
                 className="text-muted-foreground/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 absolute inset-y-0 end-0 flex h-full w-10 items-center justify-center rounded-e-full transition-[color,box-shadow] outline-none focus:z-10 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer pr-5"
                 aria-label="Clear search"
@@ -401,13 +363,13 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
 
       <div className="flex flex-col h-full w-full overflow-y-auto scrollbar-thin px-2 space-y-2">
         {/* Image and plot information Display */}
-        <div className="w-full bg-primary/40 rounded-3xl">
+        <div className="w-full bg-secondary rounded-3xl">
           <div className="relative">
             {!imageLoaded && <Skeleton className="w-full rounded-t-3xl absolute inset-0" />}
             <img
               ref={imgRef}
-              src={selectedPoint.image}
-              alt={selectedPoint.name}
+              src={selectedPlot.image_url}
+              alt={`Plot #${selectedPlot.plot_id}`}
               className="object-cover w-full h-50 rounded-t-3xl"
               onLoad={() => setImageLoaded(true)}
             />
@@ -415,17 +377,14 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
 
           <div className="space-y-2 p-4">
             <span className="text-lg font-medium text-muted-foreground uppercase tracking-wide">
-              {selectedPoint.category === 'chambers' ? 'Memorial Chambers' : selectedPoint.category === 'columbarium' ? 'Columbarium' : selectedPoint.category === 'lawn_lot' ? 'Lawn Lot' : ''}
+              {CATEGORY_LABEL[selectedPlot.category] ?? ''}
             </span>
             <p className="font-semibold text-sm text-foreground leading-tight mb-8">
-              {selectedPoint.category === 'chambers' && 'A dignified memorial chamber with individual niches for placement and remembrance.'}
-              {selectedPoint.category === 'columbarium' && 'A peaceful columbarium with organized niches for eternal rest and peaceful remembrance.'}
-              {selectedPoint.category === 'lawn_lot' && 'A serene lawn lot perfect for gatherings, ceremonies, and peaceful moments of reflection.'}
+              {CATEGORY_DESCRIPTION[selectedPlot.category] ?? ''}
             </p>
 
             {/* plot information buttons */}
             <div className="flex justify-evenly">
-              {/* Get direction button for activating navigation to the plot, and share button for sharing the plot details. These buttons are placeholders and can be implemented with actual functionality as needed. */}
               <div className="flex flex-col items-center">
                 <Button
                   size="lg"
@@ -438,7 +397,6 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
                 </Button>
                 <span className="text-foreground-muted">Direction</span>
               </div>
-              {/* this button will share the plot via coppy link or via qr code and if the user scan it or paste the link it will auto popup specific plot */}
               <div className="flex flex-col items-center">
                 <Button
                   size="lg"
@@ -480,55 +438,55 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
 
             <EditPlotDialog
               isOpen={isEditOpen}
-              selectedPoint={selectedPoint}
+              selectedPlot={selectedPlot}
               onClose={() => setIsEditOpen(false)}
             />
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="bg-primary/40 p-2 rounded-3xl">
-          {selectedPoint.category === 'chambers' || selectedPoint.category === 'columbarium'
+        <div className="bg-secondary p-2 rounded-3xl">
+          {isNicheCategory
             ? (
                 <div className="grid grid-cols-3 divide-x divide-border text-center rounded-lg overflow-hidden">
                   <div className="flex flex-col items-center py-2">
                     <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Rows</span>
-                    <span className="text-lg font-bold text-foreground">{selectedPoint.rows ?? '—'}</span>
+                    <span className="text-lg font-bold text-foreground">{selectedPlot.niche_row ?? '—'}</span>
                   </div>
                   <div className="flex flex-col items-center py-2">
                     <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Columns</span>
-                    <span className="text-lg font-bold text-foreground">{selectedPoint.columns ?? '—'}</span>
+                    <span className="text-lg font-bold text-foreground">{selectedPlot.niche_column ?? '—'}</span>
                   </div>
                   <div className="flex flex-col items-center py-2">
                     <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Total</span>
                     <span className="text-lg font-bold text-foreground">
-                      {selectedPoint.rows && selectedPoint.columns
-                        ? selectedPoint.rows * selectedPoint.columns
+                      {selectedPlot.niche_row && selectedPlot.niche_column
+                        ? selectedPlot.niche_row * selectedPlot.niche_column
                         : 'N/A'}
                     </span>
                   </div>
                 </div>
               )
-            : selectedPoint.category === 'lawn_lot'
+            : selectedPlot.category === PLOT_CATEGORY.LAWN
               ? (
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div className="space-y-0">
                       <p className="text-xs text-muted-foreground">Width</p>
                       <p className="text-lg font-semibold">
-                        {selectedPoint.width}
+                        {selectedPlot.width}
                       </p>
                     </div>
                     <div className="space-y-0">
                       <p className="text-xs text-muted-foreground">Length</p>
                       <p className="text-lg font-semibold">
-                        {selectedPoint.length}
+                        {selectedPlot.length}
                         m
                       </p>
                     </div>
                     <div className="space-y-0">
                       <p className="text-xs text-muted-foreground">Area</p>
                       <p className="text-lg font-semibold">
-                        {selectedPoint.area}
+                        {selectedPlot.area}
                         m²
                       </p>
                     </div>
@@ -538,8 +496,8 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
         </div>
 
         {/* Category-specific Details */}
-        {(selectedPoint.category === 'lawn_lot') && (
-          <div className="bg-secondary rounded-md shadow-sm p-5 w-full">
+        {selectedPlot.category === PLOT_CATEGORY.LAWN && (
+          <div className="bg-secondary rounded-3xl p-5 w-full">
             <div className="grid grid-cols-2 gap-4">
               {/* Plot Status */}
               <div className="text-center space-y-2">
@@ -550,7 +508,7 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
                     aria-label="Plot Status"
                     title="Plot Status"
                   >
-                    <span className="text-xs capitalize leading-none">{selectedPoint.status}</span>
+                    <span className="text-xs capitalize leading-none">{selectedPlot.lawn_status}</span>
                   </div>
                 </div>
               </div>
@@ -561,7 +519,7 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
                   <span
                     className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center"
                   >
-                    <span className="text-xs capitalize font-bold">{selectedPoint.lawn_type}</span>
+                    <span className="text-xs capitalize font-bold">{selectedPlot.lawn_type}</span>
                   </span>
                 </div>
               </div>
@@ -569,40 +527,40 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
           </div>
         )}
 
-        {/* popup for columbarium or chambers with niche grid display */}
-        {(selectedPoint.category === 'columbarium'
-          || selectedPoint.category === 'chambers') && (
+        {/* Niche grid display for columbarium / chambers */}
+        {isNicheCategory && (
           <div className="space-y-2">
-            {/* {Niche grids are common in columbariums and chambers, showing available niches.} */}
-            {selectedPoint.rows && selectedPoint.columns && (
+            {selectedPlot.niche_row && selectedPlot.niche_column && (
               <NicheGrids
-                rows={selectedPoint.rows}
-                cols={selectedPoint.columns}
+                rows={selectedPlot.niche_row}
+                cols={selectedPlot.niche_column}
+                niches={niches}
+                isLoading={isNichesLoading}
               />
             )}
 
             <div className="grid grid-cols-4 gap-2 text-xs bg-secondary p-1 rounded-3xl justify-evenly">
               <div className="flex justify-center items-center gap-1">
                 <div className="rounded-full bg-green-50 dark:bg-green-200 p-2">
-                  <div className="font-semibold">{pointsData.features.filter(f => f.properties.status === 'available').length}</div>
+                  <div className="font-semibold">{nicheStatusCounts.available}</div>
                 </div>
                 <div className="text-green-600">Available</div>
               </div>
               <div className="flex justify-center items-center gap-1">
                 <div className="rounded-full bg-yellow-50 dark:bg-yellow-200 p-2">
-                  <div className="font-semibold">{pointsData.features.filter(f => f.properties.status === 'reserved').length}</div>
+                  <div className="font-semibold">{nicheStatusCounts.reserved}</div>
                 </div>
                 <div className="text-yellow-600">Reserved</div>
               </div>
               <div className="flex justify-center items-center gap-1">
                 <div className="rounded-full bg-red-50 dark:bg-red-200 p-2">
-                  <div className="font-semibold">{pointsData.features.filter(f => f.properties.status === 'sold').length}</div>
+                  <div className="font-semibold">{nicheStatusCounts.sold}</div>
                 </div>
                 <div className="text-red-600">Sold</div>
               </div>
               <div className="flex justify-center items-center gap-1">
                 <div className="rounded-full bg-cyan-200 dark:bg-cyan-400 p-2">
-                  <div className="font-semibold">{pointsData.features.filter(f => f.properties.status === 'hold').length}</div>
+                  <div className="font-semibold">{nicheStatusCounts.hold}</div>
                 </div>
                 <div className="text-cyan-600">Hold</div>
               </div>
@@ -610,9 +568,9 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
           </div>
         )}
 
-        {/* else */}
-        {!['lawn_lot', 'columbarium', 'chambers'].includes(
-          selectedPoint.category,
+        {/* Unknown category fallback */}
+        {![PLOT_CATEGORY.LAWN, PLOT_CATEGORY.COLUMBARIUM, PLOT_CATEGORY.CHAMBERS].includes(
+          selectedPlot.category,
         ) && (
           <p className="text-sm text-gray-500 italic">
             No additional info available.
@@ -623,10 +581,10 @@ function SidebarContentComponent({ selectedPoint, setSelectedPoint }: SidebarCon
   )
 }
 
+// ─── Main Export ──────────────────────────────────────────────────────────────
+
 export function MarkersLayer() {
-  const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(
-    null,
-  )
+  const [selectedPlot, setSelectedPlot] = useState<SelectedPlot | null>(null)
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -635,19 +593,19 @@ export function MarkersLayer() {
         <Sidebar>
           <SidebarContent>
             <SidebarContentComponent
-              selectedPoint={selectedPoint}
-              setSelectedPoint={setSelectedPoint}
+              selectedPlot={selectedPlot}
+              setSelectedPlot={setSelectedPlot}
             />
           </SidebarContent>
         </Sidebar>
       </LayoutGroup>
 
       <MarkersLayerContent
-        selectedPoint={selectedPoint}
-        setSelectedPoint={setSelectedPoint}
+        selectedPlot={selectedPlot}
+        setSelectedPlot={setSelectedPlot}
       />
       <main className="relative">
-        {selectedPoint && <SidebarTrigger />}
+        {selectedPlot && <SidebarTrigger />}
         <MapControls
           position="top-left"
           showZoom
