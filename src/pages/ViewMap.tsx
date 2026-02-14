@@ -37,7 +37,7 @@ const FALLBACK_CENTER: [number, number] = [123.79779924469761, 10.24929088538317
 
 function App() {
   const mapRef = useRef<MapRef>(null)
-  const [style, setStyle] = useState<string>('arcgis-satellite')
+  const [style, setStyle] = useState<string>('osm-3d')
   const selectedMapStyle = mapStyles.find(ms => ms.id === style)
   const selectedStyle = selectedMapStyle?.styleUrl
   const is3D = style === 'osm-3d'

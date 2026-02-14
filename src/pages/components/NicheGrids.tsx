@@ -37,9 +37,10 @@ interface NicheGridsProps {
   cols: number
   niches: Niche[]
   isLoading: boolean
+  highlightedUnitCode?: string | null
 }
 
-export function NicheGrids({ rows: _rows, cols, niches, isLoading }: NicheGridsProps) {
+export function NicheGrids({ rows: _rows, cols, niches, isLoading, highlightedUnitCode = null }: NicheGridsProps) {
   const [selectedCell, setSelectedCell] = useState<NicheCell | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
@@ -52,6 +53,22 @@ export function NicheGrids({ rows: _rows, cols, niches, isLoading }: NicheGridsP
   useEffect(() => {
     setColumnPage(0)
   }, [cols, niches.length])
+
+  useEffect(() => {
+    if (!highlightedUnitCode || cols <= MAX_COLS_PER_PAGE) {
+      return
+    }
+
+    const normalizedUnitCode = highlightedUnitCode.trim().toLowerCase()
+    const targetCell = cells.find(cell => (cell.unit_code ?? '').trim().toLowerCase() === normalizedUnitCode)
+
+    if (!targetCell) {
+      return
+    }
+
+    const targetPage = Math.floor(targetCell.col / MAX_COLS_PER_PAGE)
+    setColumnPage(targetPage)
+  }, [highlightedUnitCode, cells, cols])
 
   const isPaginated = cols > MAX_COLS_PER_PAGE
   const startCol = isPaginated ? columnPage * MAX_COLS_PER_PAGE : 0
@@ -140,21 +157,29 @@ export function NicheGrids({ rows: _rows, cols, niches, isLoading }: NicheGridsP
             gridTemplateColumns: `repeat(${visibleCols}, 32px)`,
           }}
         >
-          {visibleCells.map(cell => (
-            <button
-              key={cell.niche_id}
-              className={cn(
-                `flex cursor-pointer items-center justify-center rounded-lg border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none w-8 h-8 ${getStatusStyle(cell.status)}`,
-                cell.status === 'not_available' ? 'opacity-50 hover:scale-100 hover:shadow-none' : '',
-              )}
-              title={`Niche #${cell.number} - ${cell.status}`}
-              onClick={() => openGridDialog(cell)}
-            >
-              <span className="text-[15px]">
-                {cell.status === 'not_available' ? '✕' : cell.number}
-              </span>
-            </button>
-          ))}
+          {visibleCells.map((cell) => {
+            const normalizedHighlightedUnitCode = highlightedUnitCode?.trim().toLowerCase() ?? ''
+            const isHighlighted
+              = normalizedHighlightedUnitCode.length > 0
+                && (cell.unit_code ?? '').trim().toLowerCase() === normalizedHighlightedUnitCode
+
+            return (
+              <button
+                key={cell.niche_id}
+                className={cn(
+                  `flex cursor-pointer items-center justify-center rounded-lg border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none w-8 h-8 ${getStatusStyle(cell.status)}`,
+                  cell.status === 'not_available' ? 'opacity-50 hover:scale-100 hover:shadow-none' : '',
+                  isHighlighted ? 'border-blue-500 ring-2 ring-blue-500/30 shadow-md' : '',
+                )}
+                title={`Niche #${cell.number} - ${cell.status}`}
+                onClick={() => openGridDialog(cell)}
+              >
+                <span className="text-[15px]">
+                  {cell.status === 'not_available' ? '✕' : cell.number}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 

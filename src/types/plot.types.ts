@@ -79,6 +79,28 @@ export interface NicheResponse {
   }
 }
 
+export interface UnitSearchResult {
+  source_type: 'niche' | 'lawn_lot'
+  plot_id: number
+  branch_id: number
+  category: PlotCategoryType
+  image_url: string | null
+  lng: number | null
+  lat: number | null
+  niche_row: number | null
+  niche_column: number | null
+  cluster: string | null
+  bay: number | null
+  lawn_status: PlotStatusType | null
+  lawn_type: PlotLawnType | null
+  width: number | null
+  length: number | null
+  area: number | null
+  unit_code: string | null
+  block: string | null
+  niche_number: number | null
+}
+
 export interface LawnLot {
   lawn_id: number
   plot_id: number

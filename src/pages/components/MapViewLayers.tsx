@@ -1,9 +1,8 @@
 /* eslint-disable no-alert */
-import type { SelectedPlot } from '@/types/plot.types'
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import { ExternalLink, Info, MapPin, Navigation, Pencil, PrinterIcon, SearchIcon, X } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { renderToString } from 'react-dom/server'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
@@ -16,22 +15,101 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useNichesByPlotId, usePlotsGeoJson } from '@/hooks/use-plots'
+import { useNichesByPlotId, usePlotsGeoJson, useUnitCodeSearch } from '@/hooks/use-plots'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { PLOT_CATEGORY } from '@/types/plot.types'
 import EditPlotDialog from './dialogs/EditPlotDialog'
 import { LawnDetails } from './LawnDetails'
 import { NicheDetails } from './NicheDetails'
 
+type SelectedPlot = import('@/types/plot.types').SelectedPlot
+type UnitSearchResult = import('@/types/plot.types').UnitSearchResult
+
 // ─── Map Layer Content ───────────────────────────────────────────────────────
 
 interface MarkersLayerContentProps {
   selectedPlot: SelectedPlot | null
-  setSelectedPlot: (plot: SelectedPlot | null) => void
+  onSelectPlot: (plot: SelectedPlot) => void
   branchId: number | null
 }
 
-function MarkersLayerContent({ selectedPlot, setSelectedPlot, branchId }: MarkersLayerContentProps) {
+function mapFeatureToSelectedPlot(
+  props: Record<string, string | number | null>,
+  coordinates: [number, number],
+): SelectedPlot {
+  return {
+    plot_id: Number(props.plot_id),
+    category: props.category as SelectedPlot['category'],
+    cluster: props.cluster != null ? String(props.cluster) : null,
+    bay: props.bay != null ? Number(props.bay) : null,
+    coordinates,
+    image_url: String(props.image_url ?? ''),
+    niche_row: props.niche_row != null ? Number(props.niche_row) : null,
+    niche_column: props.niche_column != null ? Number(props.niche_column) : null,
+    lawn_status: (props.lawn_status as SelectedPlot['lawn_status']) ?? null,
+    lawn_type: (props.lawn_type as SelectedPlot['lawn_type']) ?? null,
+    width: props.width != null ? Number(props.width) : null,
+    length: props.length != null ? Number(props.length) : null,
+    area: props.area != null ? Number(props.area) : null,
+    unit_code: props.unit_code != null ? String(props.unit_code) : null,
+    block: props.block != null ? String(props.block) : null,
+  }
+}
+
+function mapSearchResultToSelectedPlot(result: UnitSearchResult): SelectedPlot | null {
+  if (result.lng == null || result.lat == null) {
+    return null
+  }
+
+  return {
+    plot_id: Number(result.plot_id),
+    category: result.category,
+    cluster: result.cluster,
+    bay: result.bay != null ? Number(result.bay) : null,
+    coordinates: [Number(result.lng), Number(result.lat)],
+    image_url: result.image_url ?? '',
+    niche_row: result.niche_row != null ? Number(result.niche_row) : null,
+    niche_column: result.niche_column != null ? Number(result.niche_column) : null,
+    lawn_status: result.lawn_status,
+    lawn_type: result.lawn_type,
+    width: result.width != null ? Number(result.width) : null,
+    length: result.length != null ? Number(result.length) : null,
+    area: result.area != null ? Number(result.area) : null,
+    unit_code: result.unit_code,
+    block: result.block,
+  }
+}
+
+function isNicheCategory(category: SelectedPlot['category']): boolean {
+  return category === PLOT_CATEGORY.CHAMBERS || category === PLOT_CATEGORY.COLUMBARIUM
+}
+
+// ─── Category Labels ─────────────────────────────────────────────────────────
+
+const CATEGORY_LABEL: Record<string, string> = {
+  [PLOT_CATEGORY.CHAMBERS]: 'Memorial Chambers',
+  [PLOT_CATEGORY.COLUMBARIUM]: 'Columbarium',
+  [PLOT_CATEGORY.LAWN]: 'Lawn Lot',
+}
+
+const CATEGORY_DESCRIPTION: Record<string, string> = {
+  [PLOT_CATEGORY.CHAMBERS]: 'A dignified memorial chamber with individual niches for placement and remembrance.',
+  [PLOT_CATEGORY.COLUMBARIUM]: 'A peaceful columbarium with organized niches for eternal rest and peaceful remembrance.',
+  [PLOT_CATEGORY.LAWN]: 'A serene lawn lot perfect for gatherings, ceremonies, and peaceful moments of reflection.',
+}
+
+const NORMALIZED_CLUSTER_LABELS: Record<string, string> = {
+  A: 'Cluster A',
+  B: 'Cluster B',
+  C: 'Cluster C',
+  D: 'Cluster D',
+  E: 'Cluster E',
+  F: 'Cluster F',
+  SM: 'St. Michael',
+  SG: 'St. Gabriel',
+}
+
+function MarkersLayerContent({ selectedPlot, onSelectPlot, branchId }: MarkersLayerContentProps) {
   const { map, isLoaded } = useMap()
   const id = useId()
   const sourceId = `markers-source-${id}`
@@ -39,14 +117,6 @@ function MarkersLayerContent({ selectedPlot, setSelectedPlot, branchId }: Marker
   const mapPinMarkerRef = useRef<maplibregl.Marker | null>(null)
 
   const { data: geoJson } = usePlotsGeoJson(branchId)
-
-  const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
-    useShallow(s => ({
-      setOpen: s.setOpen,
-      setOpenMobile: s.setOpenMobile,
-      isMobile: s.isMobile,
-    })),
-  )
 
   // Add / update the GeoJSON source & circle layer
   useEffect(() => {
@@ -101,37 +171,7 @@ function MarkersLayerContent({ selectedPlot, setSelectedPlot, branchId }: Marker
       const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number]
       const props = feature.properties as Record<string, string | number | null>
 
-      setSelectedPlot({
-        plot_id: Number(props.plot_id),
-        category: props.category as SelectedPlot['category'],
-        cluster: props.cluster != null ? String(props.cluster) : null,
-        bay: props.bay != null ? Number(props.bay) : null,
-        coordinates: coords,
-        image_url: String(props.image_url ?? ''),
-        niche_row: props.niche_row != null ? Number(props.niche_row) : null,
-        niche_column: props.niche_column != null ? Number(props.niche_column) : null,
-        lawn_status: (props.lawn_status as SelectedPlot['lawn_status']) ?? null,
-        lawn_type: (props.lawn_type as SelectedPlot['lawn_type']) ?? null,
-        width: props.width != null ? Number(props.width) : null,
-        length: props.length != null ? Number(props.length) : null,
-        area: props.area != null ? Number(props.area) : null,
-        unit_code: props.unit_code != null ? String(props.unit_code) : null,
-        block: props.block != null ? String(props.block) : null,
-      })
-
-      map.flyTo({
-        center: coords,
-        zoom: Math.max(map.getZoom(), 18),
-        duration: 1000,
-        essential: true,
-      })
-
-      if (isMobile) {
-        setOpenMobile(true)
-      }
-      else {
-        setOpen(true)
-      }
+      onSelectPlot(mapFeatureToSelectedPlot(props, coords))
     }
 
     const handleMouseEnter = () => {
@@ -161,12 +201,21 @@ function MarkersLayerContent({ selectedPlot, setSelectedPlot, branchId }: Marker
         // ignore cleanup errors
       }
     }
-  }, [map, isLoaded, geoJson, sourceId, layerId, isMobile, setOpen, setOpenMobile, setSelectedPlot])
+  }, [map, isLoaded, geoJson, sourceId, layerId, onSelectPlot])
 
-  // Selected marker pin overlay
+  // Selected marker pin overlay function
   useEffect(() => {
     if (!map || !isLoaded)
       return
+
+    if (selectedPlot) {
+      map.flyTo({
+        center: selectedPlot.coordinates,
+        zoom: Math.max(map.getZoom(), 18),
+        duration: 1000,
+        essential: true,
+      })
+    }
 
     if (mapPinMarkerRef.current) {
       mapPinMarkerRef.current.remove()
@@ -208,7 +257,11 @@ function MarkersLayerContent({ selectedPlot, setSelectedPlot, branchId }: Marker
 
 // ─── Floating Search Bar ─────────────────────────────────────────────────────
 
-function FloatingSearchBar() {
+interface FloatingSearchBarProps {
+  onSelectSearchResult: (result: UnitSearchResult) => void
+}
+
+function FloatingSearchBar({ onSelectSearchResult }: FloatingSearchBarProps) {
   const { open, openMobile, isMobile } = useSidebarStore(
     useShallow(s => ({
       open: s.open,
@@ -216,7 +269,27 @@ function FloatingSearchBar() {
       isMobile: s.isMobile,
     })),
   )
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const isOpen = isMobile ? openMobile : open
+  const { data: searchResults = [], isFetching: isSearching } = useUnitCodeSearch(debouncedSearchTerm)
+  const hasSearchTerm = debouncedSearchTerm.trim().length > 0
+  const hasResults = searchResults.length > 0
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 250)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [searchTerm])
+
+  useEffect(() => {
+    if (isOpen) {
+      setSearchTerm('')
+      setDebouncedSearchTerm('')
+    }
+  }, [isOpen])
 
   return (
     <AnimatePresence>
@@ -230,6 +303,7 @@ function FloatingSearchBar() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
+          onSubmit={e => e.preventDefault()}
         >
           <div className="relative flex-1">
             <Input
@@ -238,10 +312,52 @@ function FloatingSearchBar() {
               aria-label="Search lot"
               autoComplete="off"
               name="search"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
             />
             <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5">
               <SearchIcon size={20} />
             </div>
+
+            {hasSearchTerm && (
+              <div className="absolute top-full mt-2 w-full rounded-2xl border bg-background shadow-lg overflow-hidden">
+                {isSearching
+                  ? (
+                      <p className="px-4 py-3 text-xs text-muted-foreground">Searching unit code...</p>
+                    )
+                  : hasResults
+                    ? (
+                        <ul className="max-h-72 overflow-y-auto">
+                          {searchResults.map(result => (
+                            <li key={`${result.source_type}-${result.plot_id}-${result.unit_code ?? 'unknown'}-${result.niche_number ?? '0'}`}>
+                              <button
+                                type="button"
+                                className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors cursor-pointer"
+                                onClick={() => onSelectSearchResult(result)}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-medium text-sm">{result.unit_code ?? 'No Unit Code'}</span>
+                                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                    {CATEGORY_LABEL[result.category] ?? result.category}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {result.category === PLOT_CATEGORY.LAWN
+                                    ? `Block ${result.block ?? 'N/A'}`
+                                    : `Niche #${result.niche_number ?? 'N/A'}`}
+                                </p>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )
+                    : (
+                        <p className="px-4 py-3 text-xs text-muted-foreground">
+                          No matching unit code found.
+                        </p>
+                      )}
+              </div>
+            )}
           </div>
         </motion.form>
       )}
@@ -249,39 +365,15 @@ function FloatingSearchBar() {
   )
 }
 
-// ─── Category Labels ─────────────────────────────────────────────────────────
-
-const CATEGORY_LABEL: Record<string, string> = {
-  [PLOT_CATEGORY.CHAMBERS]: 'Memorial Chambers',
-  [PLOT_CATEGORY.COLUMBARIUM]: 'Columbarium',
-  [PLOT_CATEGORY.LAWN]: 'Lawn Lot',
-}
-
-const CATEGORY_DESCRIPTION: Record<string, string> = {
-  [PLOT_CATEGORY.CHAMBERS]: 'A dignified memorial chamber with individual niches for placement and remembrance.',
-  [PLOT_CATEGORY.COLUMBARIUM]: 'A peaceful columbarium with organized niches for eternal rest and peaceful remembrance.',
-  [PLOT_CATEGORY.LAWN]: 'A serene lawn lot perfect for gatherings, ceremonies, and peaceful moments of reflection.',
-}
-
-const NORMALIZED_CLUSTER_LABELS: Record<string, string> = {
-  A: 'Cluster A',
-  B: 'Cluster B',
-  C: 'Cluster C',
-  D: 'Cluster D',
-  E: 'Cluster E',
-  F: 'Cluster F',
-  SM: 'St. Michael',
-  SG: 'St. Gabriel',
-}
-
 // ─── Sidebar Content ─────────────────────────────────────────────────────────
 
 interface SidebarContentComponentProps {
   selectedPlot: SelectedPlot | null
   setSelectedPlot: (plot: SelectedPlot | null) => void
+  highlightedUnitCode: string | null
 }
 
-function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarContentComponentProps) {
+function SidebarContentComponent({ selectedPlot, setSelectedPlot, highlightedUnitCode }: SidebarContentComponentProps) {
   const [isEditOpen, setIsEditOpen] = useState(false)
 
   // Fetch niches for chambers/columbarium plots
@@ -393,6 +485,13 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
                 </span>
               </span>
             )}
+            {selectedPlot.unit_code && (
+              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                Selected Unit:
+                {' '}
+                {selectedPlot.unit_code}
+              </span>
+            )}
 
             {/* plot information buttons */}
             <div className="flex justify-evenly">
@@ -462,6 +561,7 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
                 selectedPlot={selectedPlot}
                 nicheData={nicheData}
                 isNichesLoading={isNichesLoading}
+                highlightedUnitCode={highlightedUnitCode}
               />
             )
           : selectedPlot.category === PLOT_CATEGORY.LAWN
@@ -493,14 +593,43 @@ interface MarkersLayerProps {
 
 export function MarkersLayer({ branchId }: MarkersLayerProps) {
   const [selectedPlot, setSelectedPlot] = useState<SelectedPlot | null>(null)
+  const [highlightedUnitCode, setHighlightedUnitCode] = useState<string | null>(null)
   const { isLoading: isPlotsLoading, isFetching: isPlotsFetching } = usePlotsGeoJson(branchId)
   const previousBranchIdRef = useRef<number | null>(branchId)
-  const { setOpen, setOpenMobile } = useSidebarStore(
+  const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
     useShallow(s => ({
       setOpen: s.setOpen,
       setOpenMobile: s.setOpenMobile,
+      isMobile: s.isMobile,
     })),
   )
+
+  const handleSelectPlot = useCallback((plot: SelectedPlot, options?: { highlightedUnitCode?: string | null }) => {
+    setSelectedPlot(plot)
+    setHighlightedUnitCode(options?.highlightedUnitCode ?? null)
+
+    if (isMobile) {
+      setOpenMobile(true)
+    }
+    else {
+      setOpen(true)
+    }
+  }, [isMobile, setOpen, setOpenMobile])
+
+  const handleSelectSearchResult = useCallback((result: UnitSearchResult) => {
+    const selectedFromSearch = mapSearchResultToSelectedPlot(result)
+    if (!selectedFromSearch) {
+      return
+    }
+
+    const shouldHighlightNiche
+      = isNicheCategory(selectedFromSearch.category)
+        && (result.unit_code?.trim().length ?? 0) > 0
+
+    handleSelectPlot(selectedFromSearch, {
+      highlightedUnitCode: shouldHighlightNiche ? result.unit_code : null,
+    })
+  }, [handleSelectPlot])
 
   useEffect(() => {
     if (previousBranchIdRef.current === branchId)
@@ -508,21 +637,29 @@ export function MarkersLayer({ branchId }: MarkersLayerProps) {
 
     previousBranchIdRef.current = branchId
     setSelectedPlot(null)
+    setHighlightedUnitCode(null)
     setOpen(false)
     setOpenMobile(false)
   }, [branchId, setOpen, setOpenMobile])
+
+  useEffect(() => {
+    if (!selectedPlot) {
+      setHighlightedUnitCode(null)
+    }
+  }, [selectedPlot])
 
   const shouldShowPlotsSkeleton = branchId != null && (isPlotsLoading || isPlotsFetching)
 
   return (
     <SidebarProvider defaultOpen={false}>
       <LayoutGroup>
-        <FloatingSearchBar />
+        <FloatingSearchBar onSelectSearchResult={handleSelectSearchResult} />
         <Sidebar>
           <SidebarContent>
             <SidebarContentComponent
               selectedPlot={selectedPlot}
               setSelectedPlot={setSelectedPlot}
+              highlightedUnitCode={highlightedUnitCode}
             />
           </SidebarContent>
         </Sidebar>
@@ -530,7 +667,7 @@ export function MarkersLayer({ branchId }: MarkersLayerProps) {
 
       <MarkersLayerContent
         selectedPlot={selectedPlot}
-        setSelectedPlot={setSelectedPlot}
+        onSelectPlot={plot => handleSelectPlot(plot)}
         branchId={branchId}
       />
       <main className="relative">

@@ -1,15 +1,20 @@
-import type { SelectedPlot } from '@/types/plot.types'
+import type { NicheResponse, SelectedPlot } from '@/types/plot.types'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { NicheResponse } from '@/types/plot.types'
 import { NicheGrids } from './NicheGrids'
 
 interface NicheDetailsProps {
   selectedPlot: SelectedPlot
   nicheData?: NicheResponse
   isNichesLoading: boolean
+  highlightedUnitCode?: string | null
 }
 
-export function NicheDetails({ selectedPlot, nicheData, isNichesLoading }: NicheDetailsProps) {
+export function NicheDetails({
+  selectedPlot,
+  nicheData,
+  isNichesLoading,
+  highlightedUnitCode = null,
+}: NicheDetailsProps) {
   const niches = nicheData?.niches ?? []
   const nicheStatusCounts = nicheData?.summary ?? {
     available: 0,
@@ -49,6 +54,7 @@ export function NicheDetails({ selectedPlot, nicheData, isNichesLoading }: Niche
             cols={selectedPlot.niche_column}
             niches={niches}
             isLoading={isNichesLoading}
+            highlightedUnitCode={highlightedUnitCode}
           />
         )}
 

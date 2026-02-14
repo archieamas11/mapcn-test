@@ -7,6 +7,7 @@ import type {
   Plot,
   PlotCategoryType,
   PlotFeatureProperties,
+  UnitSearchResult,
 } from '@/types/plot.types'
 import { apiClient } from '@/lib/axios'
 import { PLOT_CATEGORY } from '@/types/plot.types'
@@ -66,6 +67,24 @@ export async function fetchLawnLotDetailsByBranch(branchId: number): Promise<Law
     '/plots/get_plots.php',
     { params: { action: 'get_lawn_lot_details_by_branch', branch_id: branchId } },
   )
+  return data.data
+}
+
+export async function searchUnits(searchTerm: string): Promise<UnitSearchResult[]> {
+  const { data } = await apiClient.get<ApiResponse<UnitSearchResult[]>>(
+    '/plots/get_plots.php',
+    {
+      params: {
+        action: 'search_units',
+        unit_code: searchTerm,
+      },
+    },
+  )
+
+  if (!Array.isArray(data.data)) {
+    return []
+  }
+
   return data.data
 }
 

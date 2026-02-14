@@ -5,6 +5,7 @@ import {
   fetchLawnLotDetailsByBranch,
   fetchNichesByPlotId,
   fetchPlotsByBranch,
+  searchUnits,
 } from '@/services/plot-service'
 
 // ─── Query Key Factory ──────────────────────────────────────────────────────
@@ -13,6 +14,7 @@ export const plotKeys = {
   all: ['plots'] as const,
   geojson: (branchId: number) => [...plotKeys.all, 'geojson', branchId] as const,
   niches: (plotId: number) => [...plotKeys.all, 'niches', plotId] as const,
+  searchUnits: (searchTerm: string) => [...plotKeys.all, 'search-units', searchTerm] as const,
   branches: () => ['branches'] as const,
 }
 
@@ -64,5 +66,18 @@ export function useNichesByPlotId(plotId: number | null | undefined) {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: { niches: [], summary: { available: 0, reserved: 0, sold: 0, hold: 0 } },
+  })
+}
+
+export function useUnitCodeSearch(searchTerm: string) {
+  const normalizedTerm = searchTerm.trim()
+
+  return useQuery({
+    queryKey: plotKeys.searchUnits(normalizedTerm),
+    queryFn: () => searchUnits(normalizedTerm),
+    enabled: normalizedTerm.length > 0,
+    placeholderData: [],
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
   })
 }
