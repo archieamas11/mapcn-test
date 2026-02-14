@@ -12,15 +12,17 @@ const BRANCH_STORAGE_KEY = 'selected_branch_id'
 
 /**
  * Extract [lng, lat] from a branch record.
+ * Always parses through Number.parseFloat so string values from the DB work correctly.
+ * Number.isFinite("123.79") === false, so we must parse first.
  */
 function branchCenter(branch: Branches): [number, number] | null {
-  if (branch.lng == null || branch.lat == null)
+  const lng = Number.parseFloat(String(branch.lng))
+  const lat = Number.parseFloat(String(branch.lat))
+
+  if (!Number.isFinite(lng) || !Number.isFinite(lat))
     return null
 
-  if (!Number.isFinite(branch.lng) || !Number.isFinite(branch.lat))
-    return null
-
-  return [branch.lng, branch.lat]
+  return [lng, lat]
 }
 
 function normalizeBranchId(value: string | number | null | undefined): number | null {

@@ -1,7 +1,7 @@
 /* eslint-disable no-alert */
 import type { SelectedPlot } from '@/types/plot.types'
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
-import { ExternalLink, MapPin, Navigation, Pencil, PrinterIcon, SearchIcon, X } from 'lucide-react'
+import { ExternalLink, Info, MapPin, Navigation, Pencil, PrinterIcon, SearchIcon, X } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import { useEffect, useId, useRef, useState } from 'react'
 import { renderToString } from 'react-dom/server'
@@ -15,7 +15,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useNichesByPlotId, usePlotsGeoJson } from '@/hooks/use-plots'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { PLOT_CATEGORY } from '@/types/plot.types'
@@ -27,16 +26,17 @@ import { NicheGrids } from './NicheGrids'
 interface MarkersLayerContentProps {
   selectedPlot: SelectedPlot | null
   setSelectedPlot: (plot: SelectedPlot | null) => void
+  branchId: number | null
 }
 
-function MarkersLayerContent({ selectedPlot, setSelectedPlot }: MarkersLayerContentProps) {
+function MarkersLayerContent({ selectedPlot, setSelectedPlot, branchId }: MarkersLayerContentProps) {
   const { map, isLoaded } = useMap()
   const id = useId()
   const sourceId = `markers-source-${id}`
   const layerId = `markers-layer-${id}`
   const mapPinMarkerRef = useRef<maplibregl.Marker | null>(null)
 
-  const { data: geoJson } = usePlotsGeoJson()
+  const { data: geoJson } = usePlotsGeoJson(branchId)
 
   const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
     useShallow(s => ({
@@ -102,6 +102,8 @@ function MarkersLayerContent({ selectedPlot, setSelectedPlot }: MarkersLayerCont
       setSelectedPlot({
         plot_id: Number(props.plot_id),
         category: props.category as SelectedPlot['category'],
+        cluster: props.cluster != null ? String(props.cluster) : null,
+        bay: props.bay != null ? Number(props.bay) : null,
         coordinates: coords,
         image_url: String(props.image_url ?? ''),
         niche_row: props.niche_row != null ? Number(props.niche_row) : null,
@@ -259,6 +261,15 @@ const CATEGORY_DESCRIPTION: Record<string, string> = {
   [PLOT_CATEGORY.LAWN]: 'A serene lawn lot perfect for gatherings, ceremonies, and peaceful moments of reflection.',
 }
 
+const NORMALIZED_CLUSTER_LABELS: Record<string, string> = {
+  A: 'Cluster A',
+  B: 'Cluster B',
+  C: 'Cluster C',
+  D: 'Cluster D',
+  SM: 'St. Michael',
+  SG: 'St. Gabriel',
+}
+
 // ─── Sidebar Content ─────────────────────────────────────────────────────────
 
 interface SidebarContentComponentProps {
@@ -267,25 +278,28 @@ interface SidebarContentComponentProps {
 }
 
 function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarContentComponentProps) {
-  const [imageLoaded, setImageLoaded] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
-  const imgRef = useRef<HTMLImageElement>(null)
 
   // Fetch niches for chambers/columbarium plots
   const isNicheCategory
     = selectedPlot?.category === PLOT_CATEGORY.CHAMBERS
       || selectedPlot?.category === PLOT_CATEGORY.COLUMBARIUM
 
-  const { data: niches = [], isLoading: isNichesLoading } = useNichesByPlotId(
+  const { data: nicheData, isLoading: isNichesLoading } = useNichesByPlotId(
     isNicheCategory ? selectedPlot?.plot_id : null,
   )
 
-  useEffect(() => {
-    setImageLoaded(false)
-    if (imgRef.current?.complete) {
-      setImageLoaded(true)
-    }
-  }, [selectedPlot])
+  const niches = nicheData?.niches ?? []
+  const fallbackNiche = niches[0] ?? null
+  const displayCluster = selectedPlot?.cluster ?? fallbackNiche?.cluster ?? null
+  const normalizedClusterLabel = NORMALIZED_CLUSTER_LABELS[displayCluster ?? ''] ?? displayCluster
+  const displayBay = selectedPlot?.bay ?? fallbackNiche?.bay ?? null
+  const nicheStatusCounts = nicheData?.summary ?? {
+    available: 0,
+    reserved: 0,
+    sold: 0,
+    hold: 0,
+  }
 
   const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
     useShallow(s => ({
@@ -317,14 +331,6 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
     )
   }
 
-  // Niche status counts for the summary bar
-  const nicheStatusCounts = {
-    available: niches.filter(n => n.niche_status === 'available').length,
-    reserved: niches.filter(n => n.niche_status === 'reserved').length,
-    sold: niches.filter(n => n.niche_status === 'sold').length,
-    hold: niches.filter(n => n.niche_status === 'hold').length,
-  }
-
   return (
     <div className="flex flex-col h-full">
       {/* Plot information searchbar */}
@@ -334,7 +340,7 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
           className="flex w-full gap-1"
           role="search"
           aria-label="Admin lot search"
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          transition={{ duration: 0.2, ease: 'easeInOut' }}
         >
           <div className="relative flex-1">
             <Input
@@ -365,13 +371,10 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
         {/* Image and plot information Display */}
         <div className="w-full bg-secondary rounded-3xl">
           <div className="relative">
-            {!imageLoaded && <Skeleton className="w-full rounded-t-3xl absolute inset-0" />}
             <img
-              ref={imgRef}
-              src={selectedPlot.image_url}
-              alt={`Plot #${selectedPlot.plot_id}`}
+              src={selectedPlot?.image_url}
               className="object-cover w-full h-50 rounded-t-3xl"
-              onLoad={() => setImageLoaded(true)}
+              alt="plot"
             />
           </div>
 
@@ -382,6 +385,12 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
             <p className="font-semibold text-sm text-foreground leading-tight mb-8">
               {CATEGORY_DESCRIPTION[selectedPlot.category] ?? ''}
             </p>
+            <span className="flex items-center text-sm gap-1">
+              <Info size={16} />
+              <span className="flex gap-1">
+                {normalizedClusterLabel ? `${normalizedClusterLabel}${displayBay != null ? ` - Bay ${displayBay}` : ''}` : ''}
+              </span>
+            </span>
 
             {/* plot information buttons */}
             <div className="flex justify-evenly">
@@ -583,7 +592,11 @@ function SidebarContentComponent({ selectedPlot, setSelectedPlot }: SidebarConte
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
-export function MarkersLayer() {
+interface MarkersLayerProps {
+  branchId: number | null
+}
+
+export function MarkersLayer({ branchId }: MarkersLayerProps) {
   const [selectedPlot, setSelectedPlot] = useState<SelectedPlot | null>(null)
 
   return (
@@ -603,6 +616,7 @@ export function MarkersLayer() {
       <MarkersLayerContent
         selectedPlot={selectedPlot}
         setSelectedPlot={setSelectedPlot}
+        branchId={branchId}
       />
       <main className="relative">
         {selectedPlot && <SidebarTrigger />}

@@ -76,18 +76,22 @@ export function NicheGrids({ rows: _rows, cols, niches, isLoading }: NicheGridsP
     setSelectedCell(null)
   }
 
-  if (isLoading) {
+  if (isLoading || cells.length === 0) {
+    const skeletonRows = 5
+    const skeletonCols = Math.min(cols || MAX_COLS_PER_PAGE, MAX_COLS_PER_PAGE)
+
     return (
       <div className="flex justify-center items-center py-4">
-        <Skeleton className="h-40 w-full rounded-lg" />
-      </div>
-    )
-  }
-
-  if (cells.length === 0) {
-    return (
-      <div className="text-center text-sm text-muted-foreground py-4">
-        No niches found for this plot.
+        <div
+          className="grid gap-1"
+          style={{
+            gridTemplateColumns: `repeat(${skeletonCols}, 32px)`,
+          }}
+        >
+          {Array.from({ length: skeletonRows * skeletonCols }).map((_, i) => (
+            <Skeleton key={i} className="w-8 h-8 rounded-lg" />
+          ))}
+        </div>
       </div>
     )
   }

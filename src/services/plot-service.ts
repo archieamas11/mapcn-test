@@ -3,7 +3,7 @@ import type {
   Branches,
   LawnLot,
   LawnLotWithPlot,
-  Niche,
+  NicheResponse,
   Plot,
   PlotCategoryType,
   PlotFeatureProperties,
@@ -18,6 +18,7 @@ const DEFAULT_IMAGE_URL
 
 // ─── API Fetch Functions ─────────────────────────────────────────────────────
 
+// These are unused since i switched to fetch plot by branch, but keeping them here for now since they may be useful for a future "All Plots" view or admin panel.
 export async function fetchAllPlots(): Promise<Plot[]> {
   const { data } = await apiClient.get<ApiResponse<Plot[]>>(
     '/plots/get_plots.php',
@@ -33,19 +34,37 @@ export async function fetchAllLawnLotDetails(): Promise<LawnLotWithPlot[]> {
   )
   return data.data
 }
+// ________________________________________________________________________
 
-export async function fetchNichesByPlotId(plotId: number): Promise<Niche[]> {
-  const { data } = await apiClient.get<ApiResponse<Niche[]>>(
+export async function fetchNichesByPlotId(plotId: number): Promise<NicheResponse> {
+  const { data } = await apiClient.get<ApiResponse<NicheResponse>>(
     '/plots/get_plots.php',
     { params: { action: 'get_niches_by_plot_id', plot_id: plotId } },
   )
   return data.data
 }
 
-export async function fetchBranch(): Promise<Branches[]> {
+export async function fetchBranches(): Promise<Branches[]> {
   const { data } = await apiClient.get<ApiResponse<Branches[]>>(
     '/plots/get_plots.php',
     { params: { action: 'get_branches' } },
+  )
+  return data.data
+}
+
+// Fetch plots for a specific branch, used in the MapView to only load relevant data for the selected branch and improve performance.
+export async function fetchPlotsByBranch(branchId: number): Promise<Plot[]> {
+  const { data } = await apiClient.get<ApiResponse<Plot[]>>(
+    '/plots/get_plots.php',
+    { params: { action: 'get_plots_by_branch', branch_id: branchId } },
+  )
+  return data.data
+}
+
+export async function fetchLawnLotDetailsByBranch(branchId: number): Promise<LawnLotWithPlot[]> {
+  const { data } = await apiClient.get<ApiResponse<LawnLotWithPlot[]>>(
+    '/plots/get_plots.php',
+    { params: { action: 'get_lawn_lot_details_by_branch', branch_id: branchId } },
   )
   return data.data
 }
@@ -74,11 +93,8 @@ export function buildPlotsGeoJson(
   const features: GeoJSON.Feature<GeoJSON.Point, PlotFeatureProperties>[] = []
 
   for (const plot of plots) {
-    const lng = Number.parseFloat(plot.lng ?? '')
-    const lat = Number.parseFloat(plot.lat ?? '')
-
     // Skip plots without valid coordinates or that are hidden
-    if (Number.isNaN(lng) || Number.isNaN(lat) || plot.isVisible === 0) {
+    if (Number.isNaN(plot.lng) || Number.isNaN(plot.lat) || plot.isVisible === 0) {
       continue
     }
 
@@ -94,13 +110,15 @@ export function buildPlotsGeoJson(
       image_url: plot.image_url ?? DEFAULT_IMAGE_URL,
       niche_row: plot.niche_row,
       niche_column: plot.niche_column,
+      cluster: plot.cluster,
+      bay: plot.bay,
       // Lawn lot fields
       lawn_id: lawnLot?.lawn_id ?? null,
       lawn_status: lawnLot?.lawn_status ?? null,
       lawn_type: lawnLot?.lawn_type ?? null,
-      width: lawnLot ? Number.parseFloat(lawnLot.width) : null,
-      length: lawnLot ? Number.parseFloat(lawnLot.length) : null,
-      area: lawnLot ? Number.parseFloat(lawnLot.area) : null,
+      width: lawnLot ? lawnLot.width : null,
+      length: lawnLot ? lawnLot.length : null,
+      area: lawnLot ? lawnLot.area : null,
       unit_code: lawnLot?.unit_code ?? null,
       block: lawnLot?.block ?? null,
     }
@@ -110,7 +128,7 @@ export function buildPlotsGeoJson(
       properties,
       geometry: {
         type: 'Point',
-        coordinates: [lng, lat],
+        coordinates: [plot.lng as number, plot.lat as number],
       },
     })
   }

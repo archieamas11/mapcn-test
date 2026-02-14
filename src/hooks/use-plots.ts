@@ -1,35 +1,52 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   buildPlotsGeoJson,
-  fetchAllLawnLotDetails,
-  fetchAllPlots,
+  fetchBranches,
+  fetchLawnLotDetailsByBranch,
   fetchNichesByPlotId,
+  fetchPlotsByBranch,
 } from '@/services/plot-service'
 
 // ─── Query Key Factory ──────────────────────────────────────────────────────
 
 export const plotKeys = {
   all: ['plots'] as const,
-  geojson: () => [...plotKeys.all, 'geojson'] as const,
+  geojson: (branchId: number) => [...plotKeys.all, 'geojson', branchId] as const,
   niches: (plotId: number) => [...plotKeys.all, 'niches', plotId] as const,
+  branches: () => ['branches'] as const,
 }
 
 // ─── Hooks ──────────────────────────────────────────────────────────────────
 
 /**
- * Fetches all plots and lawn lot details in parallel,
+ * Fetches all available branches from tbl_branch.
+ */
+export function useBranches() {
+  return useQuery({
+    queryKey: plotKeys.branches(),
+    queryFn: fetchBranches,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Fetches plots and lawn lot details for a specific branch,
  * then builds a GeoJSON FeatureCollection for the map layer.
  */
-export function usePlotsGeoJson() {
+export function usePlotsGeoJson(branchId: number | null) {
   return useQuery({
-    queryKey: plotKeys.geojson(),
+    queryKey: plotKeys.geojson(branchId ?? 0),
     queryFn: async () => {
+      if (!branchId)
+        return { type: 'FeatureCollection' as const, features: [] }
       const [plots, lawnLots] = await Promise.all([
-        fetchAllPlots(),
-        fetchAllLawnLotDetails(),
+        fetchPlotsByBranch(branchId),
+        fetchLawnLotDetailsByBranch(branchId),
       ])
       return buildPlotsGeoJson(plots, lawnLots)
     },
+    enabled: branchId != null && branchId > 0,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
@@ -46,5 +63,6 @@ export function useNichesByPlotId(plotId: number | null | undefined) {
     enabled: plotId != null && plotId > 0,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    placeholderData: { niches: [], summary: { available: 0, reserved: 0, sold: 0, hold: 0 } },
   })
 }
