@@ -230,6 +230,7 @@ function SidebarTrigger({
         transition-all duration-300 ease-in-out
         hover:scale-105 hover:shadow-lg
         active:scale-95
+        shadow-xl
         `,
         className
       )}

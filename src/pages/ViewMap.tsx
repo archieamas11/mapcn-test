@@ -1,6 +1,7 @@
 import type { MapRef } from '@/components/ui/map'
 import type { Branches } from '@/types/plot.types'
 import { useEffect, useRef, useState } from 'react'
+import { ModeToggle } from '@/components/mode-toggle'
 import { Map } from '@/components/ui/map'
 import { Select, SelectContent, SelectItem, SelectPositioner, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -32,12 +33,11 @@ function normalizeBranchId(value: string | number | null | undefined): number | 
 }
 
 // ─── Default fallback center (Minglanilla) ───────────────────────────────────
-
 const FALLBACK_CENTER: [number, number] = [123.79779924469761, 10.249290885383175]
 
 function App() {
   const mapRef = useRef<MapRef>(null)
-  const [style, setStyle] = useState<string>('osm-3d')
+  const [style, setStyle] = useState<string>('carto')
   const selectedMapStyle = mapStyles.find(ms => ms.id === style)
   const selectedStyle = selectedMapStyle?.styleUrl
   const is3D = style === 'osm-3d'
@@ -133,9 +133,11 @@ function App() {
           <MarkersLayer branchId={selectedBranchIdNumber} />
         </Map>
 
-        {/* Map style selector — bottom-right overlay */}
         <div className="flex flex-row absolute bottom-2 right-2 gap-2">
-          {/* Branch selector — top-left overlay */}
+          {/* Branch selector */}
+          <div className="bg-primary">
+            <ModeToggle />
+          </div>
           <div className="z-10">
             {isBranchesLoading
               ? <Skeleton className="h-9 w-44 rounded-md" />
@@ -144,7 +146,7 @@ function App() {
                     value={selectedBranchId}
                     onValueChange={onBranchChange}
                   >
-                    <SelectTrigger className="bg-background text-foreground border rounded-md px-3 py-2 text-sm shadow w-fit min-w-[11rem]">
+                    <SelectTrigger className="bg-card text-foreground border rounded-md px-3 py-2 text-sm shadow w-fit min-w-[11rem]">
                       <SelectValue render={(_, { value }) => {
                         const selected = branches.find(b => String(b.branch_id) === value)
                         return selected ? <span>{selected.branch_name}</span> : <span>Select branch</span>
@@ -163,6 +165,8 @@ function App() {
                   </Select>
                 )}
           </div>
+
+          {/* Map style selector */}
           <div className="z-10">
             <Select
               value={style}
@@ -171,7 +175,7 @@ function App() {
                   setStyle(value)
               }}
             >
-              <SelectTrigger className="bg-background text-foreground border rounded-md px-3 py-2 text-sm shadow w-fit min-w-[11rem]">
+              <SelectTrigger className="bg-card text-foreground border rounded-md px-3 py-2 text-sm shadow w-fit min-w-[11rem]">
                 <SelectValue render={(_, { value }) => {
                   const selected = mapStyles.find(ms => ms.id === value)
                   return selected

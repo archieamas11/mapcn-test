@@ -4,7 +4,7 @@ interface MapStyle {
   id: string
   name: string
   image: string
-  styleUrl: string | MapLibreGL.StyleSpecification
+  styleUrl: string | MapLibreGL.StyleSpecification | undefined
   description: string
 }
 
@@ -57,5 +57,13 @@ export const mapStyles: MapStyle[] = [
       'https://raw.githubusercontent.com/muimsd/map-gl-style-switcher/refs/heads/main/public/osm.png',
     styleUrl: 'https://tiles.openfreemap.org/styles/bright',
     description: 'OSM style',
+  },
+  {
+    id: 'carto',
+    name: 'Carto Dynamic Map',
+    image:
+      'https://raw.githubusercontent.com/muimsd/map-gl-style-switcher/refs/heads/main/public/osm.png',
+    styleUrl: undefined,
+    description: 'Carto Dynamic Map style',
   },
 ]

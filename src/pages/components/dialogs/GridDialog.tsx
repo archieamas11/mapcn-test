@@ -106,8 +106,9 @@ export default function GridDialog({
                 <SelectPositioner>
                   <SelectContent>
                     <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="occupied">Occupied</SelectItem>
+                    <SelectItem value="sold">Sold</SelectItem>
                     <SelectItem value="reserved">Reserved</SelectItem>
+                    <SelectItem value="hold">Hold</SelectItem>
                     <SelectItem value="not_available">Not Available</SelectItem>
                   </SelectContent>
                 </SelectPositioner>

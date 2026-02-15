@@ -241,9 +241,7 @@ const Map = forwardRef<MapRef, MapProps>((
       container: containerRef.current,
       style: initialStyle,
       renderWorldCopies: false,
-      attributionControl: {
-        compact: true,
-      },
+      attributionControl: false,
       ...props,
       ...viewport,
     })
@@ -830,7 +828,7 @@ function ControlButton({
       aria-label={label}
       type="button"
       className={cn(
-        'flex items-center justify-center size-8 hover:bg-accent dark:hover:bg-accent/40 transition-colors',
+        'flex items-center justify-center p-2 hover:bg-accent dark:hover:bg-accent/40 transition-colors',
         disabled && 'opacity-50 pointer-events-none cursor-not-allowed',
       )}
       disabled={disabled}

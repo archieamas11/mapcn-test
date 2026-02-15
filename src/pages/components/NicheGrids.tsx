@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-import { getStatusStyle } from '@/utils/status-style'
+import { getPlotStatusColor } from '@/types/plot.types'
 import GridDialog from './dialogs/GridDialog'
 
 const MAX_COLS_PER_PAGE = 10
@@ -119,7 +119,7 @@ export function NicheGrids({ rows: _rows, cols, niches, isLoading, highlightedUn
   return (
     <>
       {isPaginated && (
-        <div className="mb-2 flex items-center justify-between gap-2 px-4">
+        <div className="flex items-center justify-between px-2 py-2">
           <div className="text-sm text-muted-foreground">
             {columnsRangeLabel}
           </div>
@@ -128,6 +128,7 @@ export function NicheGrids({ rows: _rows, cols, niches, isLoading, highlightedUn
             <Button
               size="xs"
               variant="outline"
+              className="rounded-full"
               onClick={() => setColumnPage(page => Math.max(0, page - 1))}
               disabled={columnPage === 0}
               aria-label="Previous columns page"
@@ -140,6 +141,7 @@ export function NicheGrids({ rows: _rows, cols, niches, isLoading, highlightedUn
             <Button
               size="xs"
               variant="outline"
+              className="rounded-full"
               onClick={() => setColumnPage(page => Math.min(pageCount - 1, page + 1))}
               disabled={columnPage >= pageCount - 1}
               aria-label="Next columns page"
@@ -150,37 +152,41 @@ export function NicheGrids({ rows: _rows, cols, niches, isLoading, highlightedUn
         </div>
       )}
 
-      <div className="flex justify-center items-center">
-        <div
-          className="grid gap-1"
-          style={{
-            gridTemplateColumns: `repeat(${visibleCols}, 32px)`,
-          }}
-        >
-          {visibleCells.map((cell) => {
-            const normalizedHighlightedUnitCode = highlightedUnitCode?.trim().toLowerCase() ?? ''
-            const isHighlighted
-              = normalizedHighlightedUnitCode.length > 0
-                && (cell.unit_code ?? '').trim().toLowerCase() === normalizedHighlightedUnitCode
+      <div
+        className="grid gap-1 overflow-hidden"
+        style={{
+          gridTemplateColumns: `repeat(${visibleCols}, 30px)`,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        {visibleCells.map((cell) => {
+          const normalizedHighlightedUnitCode = highlightedUnitCode?.trim().toLowerCase() ?? ''
+          const isHighlighted
+            = normalizedHighlightedUnitCode.length > 0
+              && (cell.unit_code ?? '').trim().toLowerCase() === normalizedHighlightedUnitCode
 
-            return (
-              <button
-                key={cell.niche_id}
-                className={cn(
-                  `flex cursor-pointer items-center justify-center rounded-lg border-2 text-center font-semibold transition-all duration-150 hover:scale-110 hover:shadow-md focus:outline-none w-8 h-8 ${getStatusStyle(cell.status)}`,
-                  cell.status === 'not_available' ? 'opacity-50 hover:scale-100 hover:shadow-none' : '',
-                  isHighlighted ? 'border-blue-500 ring-2 ring-blue-500/30 shadow-md' : '',
-                )}
-                title={`Niche #${cell.number} - ${cell.status}`}
-                onClick={() => openGridDialog(cell)}
-              >
-                <span className="text-[15px]">
-                  {cell.status === 'not_available' ? '✕' : cell.number}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+          return (
+            <button
+              key={cell.niche_id}
+              className={cn(
+                'flex cursor-pointer items-center justify-center rounded-lg border-2 text-center font-semibold transition-all duration-150 hover:shadow-md focus:outline-none w-8 h-8',
+                cell.status === 'not_available' ? 'opacity-50 hover:scale-100 hover:shadow-none' : '',
+                isHighlighted ? 'border-blue-500 ring-2 ring-blue-500/30 shadow-md' : 'border-white/20',
+              )}
+              style={{
+                backgroundColor: getPlotStatusColor(cell.status),
+                color: cell.status === 'available' ? '#064e3b' : cell.status === 'sold' ? '#7f1d1d' : cell.status === 'reserved' ? '#78350f' : cell.status === 'hold' ? '#1e3a8a' : '#111827',
+              }}
+              title={`Niche #${cell.number} - ${cell.status}`}
+              onClick={() => openGridDialog(cell)}
+            >
+              <span className="text-[12px] font-bold">
+                {cell.status === 'not_available' ? '✕' : cell.number}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Dialog for cell details */}

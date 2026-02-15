@@ -22,6 +22,29 @@ export const PLOT_CATEGORY = {
   COLUMBARIUM: 'columbarium',
 } as const
 
+export const LAWN_TYPE_COLORS = {
+  [LAWN_TYPE.BRONZE]: '#ffffff',
+  [LAWN_TYPE.SILVER]: '#ef0d11',
+  [LAWN_TYPE.PLATINUM]: '#febf00',
+  [LAWN_TYPE.DIAMOND]: '#c1809e',
+} as const
+
+export function getLawnTypeColor(type: PlotLawnType | string): string {
+  return LAWN_TYPE_COLORS[type as keyof typeof LAWN_TYPE_COLORS] || '#000000'
+}
+
+export const PLOT_STATUS_COLORS = {
+  [PLOT_STATUS.AVAILABLE]: '#22c55e', // green-500
+  [PLOT_STATUS.SOLD]: '#ef4444', // red-500
+  [PLOT_STATUS.RESERVED]: '#f59e0b', // amber-500
+  [PLOT_STATUS.HOLD]: '#3b82f6', // blue-500
+  [PLOT_STATUS.NOT_AVAILABLE]: '#6b7280', // gray-500
+} as const
+
+export function getPlotStatusColor(status: PlotStatusType | string): string {
+  return PLOT_STATUS_COLORS[status as PlotStatusType] || PLOT_STATUS_COLORS[PLOT_STATUS.NOT_AVAILABLE]
+}
+
 // ─── Derived Types ───────────────────────────────────────────────────────────
 
 export type PlotStatusType = (typeof PLOT_STATUS)[keyof typeof PLOT_STATUS]

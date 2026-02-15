@@ -1,29 +1,15 @@
-/* eslint-disable no-alert */
-import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
-import { ExternalLink, Info, MapPin, Navigation, Pencil, PrinterIcon, SearchIcon, X } from 'lucide-react'
+import type { PlotStatusType, SelectedPlot, UnitSearchResult } from '@/types/plot.types'
 import maplibregl from 'maplibre-gl'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { renderToString } from 'react-dom/server'
 import { useShallow } from 'zustand/react/shallow'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { MapControls, useMap } from '@/components/ui/map'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useNichesByPlotId, usePlotsGeoJson, useUnitCodeSearch } from '@/hooks/use-plots'
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { usePlotsGeoJson } from '@/hooks/use-plots'
 import { useSidebarStore } from '@/stores/sidebar-store'
-import { PLOT_CATEGORY } from '@/types/plot.types'
-import EditPlotDialog from './dialogs/EditPlotDialog'
-import { LawnDetails } from './LawnDetails'
-import { NicheDetails } from './NicheDetails'
-
-type SelectedPlot = import('@/types/plot.types').SelectedPlot
-type UnitSearchResult = import('@/types/plot.types').UnitSearchResult
+import { getPlotStatusColor, PLOT_CATEGORY, PLOT_STATUS } from '@/types/plot.types'
+import { MapViewSidebar } from './map-view-layers/MapViewSidebar'
+import { isNicheCategory } from './map-view-layers/plot-category.utils'
 
 // ─── Map Layer Content ───────────────────────────────────────────────────────
 
@@ -80,35 +66,6 @@ function mapSearchResultToSelectedPlot(result: UnitSearchResult): SelectedPlot |
   }
 }
 
-function isNicheCategory(category: SelectedPlot['category']): boolean {
-  return category === PLOT_CATEGORY.CHAMBERS || category === PLOT_CATEGORY.COLUMBARIUM
-}
-
-// ─── Category Labels ─────────────────────────────────────────────────────────
-
-const CATEGORY_LABEL: Record<string, string> = {
-  [PLOT_CATEGORY.CHAMBERS]: 'Memorial Chambers',
-  [PLOT_CATEGORY.COLUMBARIUM]: 'Columbarium',
-  [PLOT_CATEGORY.LAWN]: 'Lawn Lot',
-}
-
-const CATEGORY_DESCRIPTION: Record<string, string> = {
-  [PLOT_CATEGORY.CHAMBERS]: 'A dignified memorial chamber with individual niches for placement and remembrance.',
-  [PLOT_CATEGORY.COLUMBARIUM]: 'A peaceful columbarium with organized niches for eternal rest and peaceful remembrance.',
-  [PLOT_CATEGORY.LAWN]: 'A serene lawn lot perfect for gatherings, ceremonies, and peaceful moments of reflection.',
-}
-
-const NORMALIZED_CLUSTER_LABELS: Record<string, string> = {
-  A: 'Cluster A',
-  B: 'Cluster B',
-  C: 'Cluster C',
-  D: 'Cluster D',
-  E: 'Cluster E',
-  F: 'Cluster F',
-  SM: 'St. Michael',
-  SG: 'St. Gabriel',
-}
-
 function MarkersLayerContent({ selectedPlot, onSelectPlot, branchId }: MarkersLayerContentProps) {
   const { map, isLoaded } = useMap()
   const id = useId()
@@ -142,16 +99,16 @@ function MarkersLayerContent({ selectedPlot, onSelectPlot, branchId }: MarkersLa
             'match',
             ['get', 'lawn_status'],
             'available',
-            '#10b981',
+            getPlotStatusColor(PLOT_STATUS.AVAILABLE as PlotStatusType),
             'sold',
-            '#ef4444',
+            getPlotStatusColor(PLOT_STATUS.SOLD as PlotStatusType),
             'reserved',
-            '#f59e0b',
+            getPlotStatusColor(PLOT_STATUS.RESERVED as PlotStatusType),
             'hold',
-            '#8b5cf6',
+            getPlotStatusColor(PLOT_STATUS.HOLD as PlotStatusType),
             'not_available',
-            '#6b7280',
-            '#3b82f6',
+            getPlotStatusColor(PLOT_STATUS.NOT_AVAILABLE as PlotStatusType),
+            '#000000',
           ],
         ],
         'circle-stroke-width': 2,
@@ -222,16 +179,29 @@ function MarkersLayerContent({ selectedPlot, onSelectPlot, branchId }: MarkersLa
       mapPinMarkerRef.current = null
     }
 
+    /* Add Map Pin to the map when i click any marker */
     if (selectedPlot) {
       map.setFilter(layerId, ['!=', ['get', 'plot_id'], selectedPlot.plot_id])
 
       const el = document.createElement('div')
       el.innerHTML = renderToString(
-        <MapPin
-          className="w-5 h-5 text-red-500 drop-shadow-lg"
-          fill="currentColor"
-        />,
+        <div className="relative flex items-center justify-center mb-2">
+          {/* Pin body */}
+          <div className="w-7 h-7 bg-red-600 rounded-full shadow-xl border-2 flex items-center justify-center">
+            {/* Inner dot */}
+            <div className="w-2.5 h-2.5 bg-white rounded-full" />
+          </div>
+
+          {/* Pointer tail */}
+          <div className="absolute top-5 w-0 h-0
+          border-l-8 border-l-transparent
+          border-r-6 border-r-transparent
+          border-t-15 border-t-red-600
+          drop-shadow-xl"
+          />
+        </div>,
       )
+
       el.style.cursor = 'pointer'
 
       const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
@@ -255,421 +225,6 @@ function MarkersLayerContent({ selectedPlot, onSelectPlot, branchId }: MarkersLa
   return null
 }
 
-// ─── Floating Search Bar ─────────────────────────────────────────────────────
-
-interface FloatingSearchBarProps {
-  onSelectSearchResult: (result: UnitSearchResult) => void
-}
-
-function FloatingSearchBar({ onSelectSearchResult }: FloatingSearchBarProps) {
-  const { open, openMobile, isMobile } = useSidebarStore(
-    useShallow(s => ({
-      open: s.open,
-      openMobile: s.openMobile,
-      isMobile: s.isMobile,
-    })),
-  )
-  const [searchTerm, setSearchTerm] = useState('')
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
-  const isOpen = isMobile ? openMobile : open
-  const { data: searchResults = [], isFetching: isSearching } = useUnitCodeSearch(debouncedSearchTerm)
-  const hasSearchTerm = debouncedSearchTerm.trim().length > 0
-  const hasResults = searchResults.length > 0
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm)
-    }, 250)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [searchTerm])
-
-  useEffect(() => {
-    if (isOpen) {
-      setSearchTerm('')
-      setDebouncedSearchTerm('')
-    }
-  }, [isOpen])
-
-  return (
-    <AnimatePresence>
-      {!isOpen && (
-        <motion.form
-          layoutId="search-bar"
-          className="flex w-full gap-1 absolute top-2 right-1/2 transform translate-x-1/2 z-20 max-w-xs sm:max-w-lg"
-          role="search"
-          aria-label="Admin lot search"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-          onSubmit={e => e.preventDefault()}
-        >
-          <div className="relative flex-1">
-            <Input
-              className="peer dark:bg-background h-12 w-full rounded-full bg-white ps-12 pe-10 text-xs md:h-14 md:text-sm"
-              placeholder="Search..."
-              aria-label="Search lot"
-              autoComplete="off"
-              name="search"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-            <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5">
-              <SearchIcon size={20} />
-            </div>
-
-            {hasSearchTerm && (
-              <div className="absolute top-full mt-2 w-full rounded-2xl border bg-background shadow-lg overflow-hidden">
-                {isSearching
-                  ? (
-                    <p className="px-4 py-3 text-xs text-muted-foreground">Searching unit code...</p>
-                  )
-                  : hasResults
-                    ? (
-                      <ul className="max-h-72 overflow-y-auto">
-                        {searchResults.map(result => (
-                          <li key={`${result.source_type}-${result.plot_id}-${result.unit_code ?? 'unknown'}-${result.niche_number ?? '0'}`}>
-                            <button
-                              type="button"
-                              className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors cursor-pointer"
-                              onClick={() => onSelectSearchResult(result)}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <div>
-                                  <span className="font-medium text-sm">{result.unit_code ?? 'No Unit Code'}</span>
-                                  <p className="text-xs text-muted-foreground mt-0.5">
-                                    {result.category === PLOT_CATEGORY.LAWN
-                                      ? `Block ${result.block ?? 'N/A'}`
-                                      : `Niche #${result.niche_number ?? 'N/A'}`}
-                                  </p>
-                                </div>
-                                <div className='flex flex-col'>
-                                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                                    {CATEGORY_LABEL[result.category] ?? result.category}
-                                  </span>
-                                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                                    {result.branch_name ?? 'N/A'}
-                                  </span>
-                                </div>
-                              </div>
-
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )
-                    : (
-                      <p className="px-4 py-3 text-xs text-muted-foreground">
-                        No matching unit code found.
-                      </p>
-                    )}
-              </div>
-            )}
-          </div>
-        </motion.form>
-      )}
-    </AnimatePresence>
-  )
-}
-
-// ─── Sidebar Content ─────────────────────────────────────────────────────────
-
-interface SidebarContentComponentProps {
-  selectedPlot: SelectedPlot | null
-  setSelectedPlot: (plot: SelectedPlot | null) => void
-  highlightedUnitCode: string | null
-  onSelectSearchResult: (result: UnitSearchResult) => void
-}
-
-function SidebarContentComponent({
-  selectedPlot,
-  setSelectedPlot,
-  highlightedUnitCode,
-  onSelectSearchResult,
-}: SidebarContentComponentProps) {
-  const [isEditOpen, setIsEditOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
-
-  // Fetch niches for chambers/columbarium plots
-  const isNicheCategory
-    = selectedPlot?.category === PLOT_CATEGORY.CHAMBERS
-    || selectedPlot?.category === PLOT_CATEGORY.COLUMBARIUM
-
-  const { data: nicheData, isLoading: isNichesLoading } = useNichesByPlotId(
-    isNicheCategory ? selectedPlot?.plot_id : null,
-  )
-
-  const niches = nicheData?.niches ?? []
-  const fallbackNiche = niches[0] ?? null
-  const displayCluster = selectedPlot?.cluster ?? fallbackNiche?.cluster ?? null
-  const normalizedClusterLabel = NORMALIZED_CLUSTER_LABELS[displayCluster ?? ''] ?? displayCluster
-  const displayBay = selectedPlot?.bay ?? fallbackNiche?.bay ?? null
-
-  const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
-    useShallow(s => ({
-      setOpen: s.setOpen,
-      setOpenMobile: s.setOpenMobile,
-      isMobile: s.isMobile,
-    })),
-  )
-  const { data: searchResults = [], isFetching: isSearching } = useUnitCodeSearch(debouncedSearchTerm)
-  const hasSearchTerm = debouncedSearchTerm.trim().length > 0
-  const hasResults = searchResults.length > 0
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm)
-    }, 250)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [searchTerm])
-
-  const handleClear = () => {
-    setSearchTerm('')
-    setDebouncedSearchTerm('')
-    if (isMobile) {
-      setOpenMobile(false)
-    }
-    else {
-      setOpen(false)
-    }
-    setSelectedPlot(null)
-  }
-
-  const handleEditPlot = () => {
-    setIsEditOpen(true)
-  }
-
-  if (!selectedPlot) {
-    return (
-      <div className="p-4 text-center text-muted-foreground">
-        <p>Select a marker on the map to view details</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Plot information searchbar */}
-      <div className="sticky top-0 z-10 px-2 py-4 bg-transparent">
-        <motion.form
-          layoutId="search-bar"
-          className="flex w-full gap-1"
-          role="search"
-          aria-label="Admin lot search"
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-          onSubmit={e => e.preventDefault()}
-        >
-          <div className="relative flex-1">
-            <Input
-              className="peer dark:bg-background h-9 w-full rounded-full bg-muted ps-12 pe-10 text-xs md:h-12 md:text-sm"
-              placeholder="Search..."
-              aria-label="Search lot"
-              autoComplete="off"
-              name="search"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-            <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5">
-              <SearchIcon size={20} />
-            </div>
-            {selectedPlot && (
-              <button
-                className="text-muted-foreground/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 absolute inset-y-0 end-0 flex h-full w-10 items-center justify-center rounded-e-full transition-[color,box-shadow] outline-none focus:z-10 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer pr-5"
-                aria-label="Clear search"
-                type="button"
-                onClick={handleClear}
-              >
-                <X size={20} aria-hidden="true" />
-              </button>
-            )}
-
-            {hasSearchTerm && (
-              <div className="absolute top-full mt-2 w-full rounded-2xl border bg-background shadow-lg overflow-hidden z-20">
-                {isSearching
-                  ? (
-                    <p className="px-4 py-3 text-xs text-muted-foreground">Searching unit code...</p>
-                  )
-                  : hasResults
-                    ? (
-                      <ul className="max-h-72 overflow-y-auto">
-                        {searchResults.map(result => (
-                          <li key={`${result.source_type}-${result.plot_id}-${result.unit_code ?? 'unknown'}-${result.niche_number ?? '0'}`}>
-                            <button
-                              type="button"
-                              className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors cursor-pointer"
-                              onClick={() => {
-                                onSelectSearchResult(result)
-                                setSearchTerm('')
-                                setDebouncedSearchTerm('')
-                              }}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <div>
-                                  <span className="font-medium text-sm">{result.unit_code ?? 'No Unit Code'}</span>
-                                  <p className="text-xs text-muted-foreground mt-0.5">
-                                    {result.category === PLOT_CATEGORY.LAWN
-                                      ? `Block ${result.block ?? 'N/A'}`
-                                      : `Niche #${result.niche_number ?? 'N/A'}`}
-                                  </p>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                                    {CATEGORY_LABEL[result.category] ?? result.category}
-                                  </span>
-                                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                                    Branch:
-                                    {' '}
-                                    {result.branch_name ?? 'N/A'}
-                                  </span>
-                                </div>
-                              </div>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )
-                    : (
-                      <p className="px-4 py-3 text-xs text-muted-foreground">
-                        No matching unit code found.
-                      </p>
-                    )}
-              </div>
-            )}
-          </div>
-        </motion.form>
-      </div>
-
-      <div className="flex flex-col h-full w-full overflow-y-auto scrollbar-thin px-2 space-y-2">
-        {/* Image and plot information Display */}
-        <div className="w-full bg-secondary rounded-3xl">
-          <div className="relative">
-            <img
-              src={selectedPlot?.image_url}
-              className="object-cover w-full h-50 rounded-t-3xl"
-              alt="plot"
-            />
-          </div>
-
-          <div className="space-y-2 p-4">
-            <span className="text-lg font-medium text-muted-foreground uppercase tracking-wide">
-              {CATEGORY_LABEL[selectedPlot.category] ?? ''}
-            </span>
-            <p className="font-semibold text-sm text-foreground leading-tight mb-8">
-              {CATEGORY_DESCRIPTION[selectedPlot.category] ?? ''}
-            </p>
-            {selectedPlot.category !== 'lawn_lot' && (
-              <span className="flex items-center text-sm gap-1">
-                <Info size={16} />
-                <span className="flex gap-1">
-                  {isNicheCategory && isNichesLoading
-                    ? <Skeleton className="h-4 w-28 rounded-sm" />
-                    : (normalizedClusterLabel ? `${normalizedClusterLabel}${displayBay != null ? ` - Bay ${displayBay}` : ''}` : '')}
-                </span>
-              </span>
-            )}
-            {selectedPlot.unit_code && (
-              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                Selected Unit:
-                {' '}
-                {selectedPlot.unit_code}
-              </span>
-            )}
-
-            {/* plot information buttons */}
-            <div className="flex justify-evenly">
-              <div className="flex flex-col items-center">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
-                  title="Get Direction"
-                  onClick={() => alert('Get Direction clicked')}
-                >
-                  <Navigation className="size-4" />
-                </Button>
-                <span className="text-foreground-muted">Direction</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
-                  title="Share Plot"
-                  onClick={() => alert('Share Plot clicked')}
-                >
-                  <ExternalLink className="size-4" />
-                </Button>
-                <span className="text-foreground-muted">Share</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
-                  title="Print Plot"
-                  onClick={() => alert('Print Plot clicked')}
-                >
-                  <PrinterIcon className="size-4" />
-                </Button>
-                <span className="text-foreground-muted">Print</span>
-              </div>
-
-              <div className="flex flex-col items-center">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="rounded-full w-10 h-10 flex items-center justify-center p-0"
-                  title="Edit Plot"
-                  onClick={handleEditPlot}
-                >
-                  <Pencil className="size-4" />
-                </Button>
-                <span className="text-foreground-muted">Edit</span>
-              </div>
-            </div>
-
-            <EditPlotDialog
-              isOpen={isEditOpen}
-              selectedPlot={selectedPlot}
-              onClose={() => setIsEditOpen(false)}
-            />
-          </div>
-        </div>
-
-        {/* Stats & Details (moved to dedicated components) */}
-        {isNicheCategory
-          ? (
-            <NicheDetails
-              selectedPlot={selectedPlot}
-              nicheData={nicheData}
-              isNichesLoading={isNichesLoading}
-              highlightedUnitCode={highlightedUnitCode}
-            />
-          )
-          : selectedPlot.category === PLOT_CATEGORY.LAWN
-            ? (
-              <LawnDetails selectedPlot={selectedPlot} />
-            )
-            : null}
-
-        {/* Niche/Lawn details moved to dedicated components above. */}
-
-        {/* Unknown category fallback */}
-        {![PLOT_CATEGORY.LAWN, PLOT_CATEGORY.COLUMBARIUM, PLOT_CATEGORY.CHAMBERS].includes(
-          selectedPlot.category,
-        ) && (
-            <p className="text-sm text-gray-500 italic">
-              No additional info available.
-            </p>
-          )}
-      </div>
-    </div>
-  )
-}
-
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 interface MarkersLayerProps {
@@ -679,7 +234,6 @@ interface MarkersLayerProps {
 export function MarkersLayer({ branchId }: MarkersLayerProps) {
   const [selectedPlot, setSelectedPlot] = useState<SelectedPlot | null>(null)
   const [highlightedUnitCode, setHighlightedUnitCode] = useState<string | null>(null)
-  const { isLoading: isPlotsLoading, isFetching: isPlotsFetching } = usePlotsGeoJson(branchId)
   const previousBranchIdRef = useRef<number | null>(branchId)
   const { setOpen, setOpenMobile, isMobile } = useSidebarStore(
     useShallow(s => ({
@@ -709,7 +263,7 @@ export function MarkersLayer({ branchId }: MarkersLayerProps) {
 
     const shouldHighlightNiche
       = isNicheCategory(selectedFromSearch.category)
-      && (result.unit_code?.trim().length ?? 0) > 0
+        && (result.unit_code?.trim().length ?? 0) > 0
 
     handleSelectPlot(selectedFromSearch, {
       highlightedUnitCode: shouldHighlightNiche ? result.unit_code : null,
@@ -733,37 +287,22 @@ export function MarkersLayer({ branchId }: MarkersLayerProps) {
     }
   }, [selectedPlot])
 
-  const shouldShowPlotsSkeleton = branchId != null && (isPlotsLoading || isPlotsFetching)
-
   return (
     <SidebarProvider defaultOpen={false}>
-      <LayoutGroup>
-        <FloatingSearchBar onSelectSearchResult={handleSelectSearchResult} />
-        <Sidebar>
-          <SidebarContent>
-            <SidebarContentComponent
-              selectedPlot={selectedPlot}
-              setSelectedPlot={setSelectedPlot}
-              highlightedUnitCode={highlightedUnitCode}
-              onSelectSearchResult={handleSelectSearchResult}
-            />
-          </SidebarContent>
-        </Sidebar>
-      </LayoutGroup>
-
       <MarkersLayerContent
         selectedPlot={selectedPlot}
         onSelectPlot={plot => handleSelectPlot(plot)}
         branchId={branchId}
       />
+
+      <MapViewSidebar
+        selectedPlot={selectedPlot}
+        setSelectedPlot={setSelectedPlot}
+        highlightedUnitCode={highlightedUnitCode}
+        onSelectSearchResult={handleSelectSearchResult}
+      />
+
       <main className="relative">
-        {shouldShowPlotsSkeleton && (
-          <div className="pointer-events-none absolute inset-x-4 top-4 z-10 flex gap-2">
-            <Skeleton className="h-8 w-24 rounded-md" />
-            <Skeleton className="h-8 w-20 rounded-md" />
-            <Skeleton className="h-8 w-28 rounded-md" />
-          </div>
-        )}
         {selectedPlot && <SidebarTrigger />}
         <MapControls
           position="top-left"

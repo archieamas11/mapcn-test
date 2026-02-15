@@ -1,70 +1,53 @@
 import type { SelectedPlot } from '@/types/plot.types'
+import { getLawnTypeColor, getPlotStatusColor } from '@/types/plot.types'
 
 interface LawnDetailsProps {
   selectedPlot: SelectedPlot
 }
 
 export function LawnDetails({ selectedPlot }: LawnDetailsProps) {
+  const lawnTypeColor = selectedPlot.lawn_type ? getLawnTypeColor(selectedPlot.lawn_type) : undefined
+  const statusColor = selectedPlot.lawn_status ? getPlotStatusColor(selectedPlot.lawn_status) : undefined
+
   return (
-    <>
-      <div className="grid grid-cols-3 gap-4 text-center">
-        <div className="space-y-0">
-          <p className="text-xs text-muted-foreground">Width</p>
-          <p className="text-lg font-semibold">{selectedPlot.width ?? '—'}</p>
-        </div>
-        <div className="space-y-0">
-          <p className="text-xs text-muted-foreground">Length</p>
-          <p className="text-lg font-semibold">
-            {selectedPlot.length ?? '—'}
-            {' '}
-            m
-          </p>
-        </div>
-        <div className="space-y-0">
-          <p className="text-xs text-muted-foreground">Area</p>
-          <p className="text-lg font-semibold">
-            {selectedPlot.area ?? '—'}
-            {' '}
-            m²
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-secondary rounded-3xl p-5 w-full mt-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center space-y-2">
-            <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Status</div>
-            <div className="flex justify-center">
-              <div
-                className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center"
-                aria-label="Plot Status"
-                title="Plot Status"
-              >
-                <span className="text-xs capitalize leading-none">{selectedPlot.lawn_status ?? '—'}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center space-y-2 border-l border-border">
-            <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Category</div>
-            <div className="flex justify-center">
-              <span className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center">
-                <span className="text-xs capitalize font-bold">{selectedPlot.lawn_type ?? '—'}</span>
+    <div className="space-y-4">
+      {/* Status and Type Section */}
+      <div className="bg-secondary rounded-3xl p-4 border border-border/50">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-background/40 rounded-2xl p-3 border border-border/40">
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block mb-1">
+              Category
+            </span>
+            <div className="flex items-center gap-2">
+              {lawnTypeColor && (
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: lawnTypeColor }}
+                />
+              )}
+              <span className="text-sm font-semibold text-foreground capitalize">
+                {selectedPlot.lawn_type ?? '—'}
               </span>
             </div>
           </div>
-
-    
-          <div className="text-center space-y-2 border-l border-border">
-            <div className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Unit Code</div>
-            <div className="flex justify-center">
-              <span className="text-foreground font-bold text-md leading-none rounded-full px-2 py-1 flex gap-1 items-center justify-center">
-                <span className="text-xs capitalize font-bold">{selectedPlot.unit_code ?? '—'}</span>
+          <div className="bg-background/40 rounded-2xl p-3 border border-border/40">
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block mb-1">
+              Lawn status
+            </span>
+            <div className="flex items-center gap-2">
+              {statusColor && (
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: statusColor }}
+                />
+              )}
+              <span className="text-sm font-semibold text-foreground capitalize">
+                {selectedPlot.lawn_status ?? '—'}
               </span>
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
