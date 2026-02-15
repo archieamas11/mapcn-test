@@ -187,7 +187,7 @@ function MarkersLayerContent({ selectedPlot, onSelectPlot, branchId }: MarkersLa
       el.innerHTML = renderToString(
         <div className="relative flex items-center justify-center mb-2">
           {/* Pin body */}
-          <div className="w-7 h-7 bg-red-600 rounded-full shadow-xl border-2 flex items-center justify-center">
+          <div className="w-7 h-7 bg-red-600 rounded-full shadow-xl flex items-center justify-center">
             {/* Inner dot */}
             <div className="w-2.5 h-2.5 bg-white rounded-full" />
           </div>
@@ -196,7 +196,7 @@ function MarkersLayerContent({ selectedPlot, onSelectPlot, branchId }: MarkersLa
           <div className="absolute top-5 w-0 h-0
           border-l-8 border-l-transparent
           border-r-6 border-r-transparent
-          border-t-15 border-t-red-600
+          border-t-20 border-t-red-600
           drop-shadow-xl"
           />
         </div>,
